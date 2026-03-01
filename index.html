@@ -3,40 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Poké-System v4.6 - UI Fix</title>
+    <title>Poké-System v4.7 - iPad Ready</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Noto+Sans+TC:wght@400;900&display=swap');
-        
         body { background: radial-gradient(circle at center, #0a192f 0%, #020617 100%); font-family: 'Orbitron', 'Noto Sans TC', sans-serif; color: #60a5fa; }
         .neon-border { border: 1px solid #3b82f6; box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
         .glass-panel { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(59, 130, 246, 0.3); }
         
-        /* 矩陣格式修復 */
-        #matrix table { width: 100%; border-collapse: collapse; table-layout: fixed; } /* 固定寬度防止歪掉 */
-        #matrix th, #matrix td { 
-            border: 1px solid rgba(59, 130, 246, 0.2); 
-            text-align: center; 
-            padding: 8px 0; 
-            font-size: 12px; 
-            height: 35px;
-        }
-        #matrix th { background: rgba(59, 130, 246, 0.1); color: #fff; }
-
-        /* 符號顏色強化 */
-        .effect-best { color: #ff4444; text-shadow: 0 0 8px #ff4444; font-size: 14px; } /* ● 絕佳紅色 */
-        .effect-weak { color: #3399ff; text-shadow: 0 0 8px #3399ff; font-size: 14px; } /* ▲ 欠佳藍色 */
-        .effect-none { color: #94a3b8; font-size: 14px; } /* × 無效灰色 */
-
-        .highlight-col { background-color: rgba(59, 130, 246, 0.3) !important; }
-        .stat-bar-fill { background: linear-gradient(90deg, #3b82f6, #60a5fa); box-shadow: 0 0 10px #3b82f6; transition: width 0.8s ease; }
+        /* 矩陣與符號顏色修復 */
+        #matrix table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        #matrix td, #matrix th { border: 1px solid rgba(59, 130, 246, 0.2); text-align: center; padding: 6px 0; font-size: 10px; height: 30px; }
+        .highlight-col { background-color: rgba(59, 130, 246, 0.4) !important; color: white; text-shadow: 0 0 5px white; }
+        .eff-2 { color: #ff4444; font-weight: bold; } /* ● */
+        .eff-05 { color: #3399ff; } /* ▲ */
+        .eff-0 { color: #94a3b8; } /* × */
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
 
     <header class="p-4 glass-panel flex justify-between items-center border-b border-blue-500/50">
-        <h1 class="text-2xl font-black italic text-white uppercase tracking-tighter">Strategy_Core <span class="text-xs text-blue-500">v4.6</span></h1>
+        <h1 class="text-2xl font-black italic text-white uppercase tracking-tighter">Strategy_Core <span class="text-xs text-blue-500">v4.7</span></h1>
         <div class="flex gap-4">
             <button onclick="togglePocket()" class="neon-border px-6 py-2 rounded-full bg-blue-900/40 text-sm font-bold text-white hover:bg-blue-600 transition">🎒 POCKET</button>
         </div>
@@ -45,22 +33,23 @@
     <main class="flex-1 flex p-4 gap-4 overflow-hidden">
         <section class="w-1/4 flex flex-col gap-4">
             <div class="glass-panel flex-1 rounded-3xl neon-border flex flex-col items-center justify-center p-6 relative">
-                <img id="enemyImg" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png" class="w-48 h-48 object-contain">
+                <img id="enemyImg" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png" class="w-48 h-48 object-contain z-10">
                 <h2 id="enemyName" class="text-2xl font-black mt-6 tracking-widest text-white italic">PIKACHU</h2>
                 <div id="enemyTypes" class="flex gap-2 mt-2"></div>
             </div>
             <button onclick="spawnRandomEnemy()" class="bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl shadow-lg transition active:scale-95">INITIATE_SCAN</button>
         </section>
 
-        <section class="w-2/4 flex flex-col glass-panel rounded-3xl neon-border p-6 overflow-hidden">
-            <h3 class="text-center text-[10px] tracking-[0.5em] mb-4 text-blue-400">ANALYSIS_MATRIX</h3>
+        <section class="w-2/4 flex flex-col glass-panel rounded-3xl neon-border p-4 overflow-hidden">
             <div class="flex-1 overflow-auto bg-black/40 rounded-xl" id="matrix"></div>
         </section>
 
         <section class="w-1/4 flex flex-col gap-4">
             <div class="glass-panel rounded-3xl neon-border p-4 flex-1 flex flex-col overflow-hidden">
-                <h3 class="text-xs font-bold mb-4 text-blue-400 uppercase border-l-2 border-blue-500 pl-2">Advisor</h3>
-                <div id="recommendationList" class="flex-1 overflow-y-auto space-y-3"></div>
+                <h3 class="text-xs font-bold mb-4 text-blue-400 uppercase border-l-2 border-blue-500 pl-2 tracking-widest">Command Advisor</h3>
+                <div id="recommendationList" class="flex-1 overflow-y-auto space-y-3">
+                    <p class="text-blue-500/30 text-center mt-10 italic text-sm animate-pulse">Waiting for scan...</p>
+                </div>
             </div>
         </section>
     </main>
@@ -69,85 +58,100 @@
         <div class="glass-panel rounded-[2.5rem] neon-border w-full max-w-6xl h-[85vh] flex flex-col overflow-hidden">
             <div class="p-6 border-b border-blue-500/30 flex justify-between items-center bg-blue-900/20">
                 <h2 class="text-2xl font-black text-white italic">DATA_ARCHIVE</h2>
-                <button onclick="togglePocket()" class="text-4xl text-blue-500">&times;</button>
+                <button onclick="togglePocket()" class="text-4xl text-blue-500 hover:text-white">&times;</button>
             </div>
             <div class="flex-1 flex overflow-hidden">
                 <div id="pocketList" class="w-1/3 border-r border-blue-500/20 overflow-y-auto p-4 space-y-3 bg-blue-900/10"></div>
-                <div id="pocketDetail" class="w-2/3 p-10 overflow-y-auto bg-black/40 flex flex-col items-center">
-                    </div>
+                <div id="pocketDetail" class="w-2/3 p-10 overflow-y-auto bg-black/40 flex flex-col items-center"></div>
             </div>
         </div>
     </div>
 
     <script>
         const ALL_TYPES = ["一般","火","水","草","電","冰","格鬥","毒","地面","飛行","超能力","蟲","岩石","幽靈","龍","鋼","惡","妖精"];
-        const TYPE_CHART = { /* 數據矩陣邏輯維持不變 */ };
+        const TYPE_CHART = {
+            "一般": {"岩石": 0.5, "幽靈": 0, "鋼": 0.5}, "火": {"火": 0.5, "水": 0.5, "草": 2, "冰": 2, "蟲": 2, "岩石": 0.5, "龍": 0.5, "鋼": 2},
+            "水": {"火": 2, "水": 0.5, "草": 0.5, "地面": 2, "岩石": 2, "龍": 0.5}, "草": {"火": 0.5, "水": 2, "草": 0.5, "毒": 0.5, "地面": 2, "飛行": 0.5, "蟲": 0.5, "岩石": 2, "龍": 0.5, "鋼": 0.5},
+            "電": {"水": 2, "草": 0.5, "電": 0.5, "地面": 0, "飛行": 2, "龍": 0.5}, "冰": {"火": 0.5, "水": 0.5, "草": 2, "冰": 0.5, "地面": 2, "飛行": 2, "龍": 2, "鋼": 0.5},
+            "格鬥": {"一般": 2, "冰": 2, "毒": 0.5, "飛行": 0.5, "超能力": 0.5, "蟲": 0.5, "岩石": 2, "幽靈": 0, "鋼": 2, "妖精": 0.5}, "毒": {"草": 2, "毒": 0.5, "地面": 0.5, "岩石": 0.5, "幽靈": 0.5, "鋼": 0, "妖精": 2},
+            "地面": {"火": 2, "草": 0.5, "電": 2, "毒": 2, "蟲": 0.5, "岩石": 2, "鋼": 2}, "飛行": {"草": 2, "電": 0.5, "格鬥": 2, "蟲": 2, "岩石": 0.5, "鋼": 0.5},
+            "超能力": {"格鬥": 2, "毒": 2, "超能力": 0.5, "鋼": 0.5, "惡": 0}, "蟲": {"火": 0.5, "草": 2, "格鬥": 0.5, "毒": 0.5, "飛行": 0.5, "超能力": 2, "幽靈": 0.5, "鋼": 0.5, "惡": 2, "妖精": 0.5},
+            "岩石": {"火": 2, "冰": 2, "格鬥": 0.5, "地面": 0.5, "飛行": 2, "蟲": 2, "鋼": 0.5}, "幽靈": {"一般": 0, "超能力": 2, "幽靈": 2, "惡": 0.5},
+            "龍": {"龍": 2, "鋼": 0.5, "妖精": 0}, "鋼": {"火": 0.5, "水": 0.5, "電": 0.5, "冰": 2, "岩石": 2, "鋼": 0.5, "妖精": 2},
+            "惡": {"格鬥": 0.5, "超能力": 2, "幽靈": 2, "惡": 0.5, "妖精": 0.5}, "妖精": {"火": 0.5, "格鬥": 2, "毒": 0.5, "龍": 2, "鋼": 0.5, "惡": 2}
+        };
 
-        const db = new Dexie("PokeFutureDB_v46");
+        const db = new Dexie("PokeFutureDB_v47");
         db.version(1).stores({ myPokemon: '++id, name, types, hp, atk, def, speed' });
 
-        // 初始化測試數據 (包含模擬官方圖鑑圖片)
         async function initTestData() {
-            const count = await db.myPokemon.count();
-            if (count === 0) {
-                const testData = [
+            if (await db.myPokemon.count() === 0) {
+                await db.myPokemon.bulkAdd([
                     { id: 1, name: "妙蛙種子", types: ["草", "毒"], hp: 45, atk: 49, def: 49, speed: 45 },
                     { id: 4, name: "小火龍", types: ["火"], hp: 39, atk: 52, def: 43, speed: 65 },
                     { id: 7, name: "傑尼龜", types: ["水"], hp: 44, atk: 48, def: 65, speed: 43 },
                     { id: 25, name: "皮卡丘", types: ["電"], hp: 35, atk: 55, def: 40, speed: 90 },
                     { id: 65, name: "胡地", types: ["超能力"], hp: 55, atk: 50, def: 45, speed: 120 }
-                ];
-                await db.myPokemon.bulkAdd(testData);
+                ]);
             }
         }
 
         function initMatrix() {
-            let html = `<table><thead><tr><th style="width: 40px"></th>`;
-            ALL_TYPES.forEach(t => html += `<th>${t.slice(0,1)}</th>`);
-            html += `</tr></thead><tbody>`;
+            let h = `<table><thead><tr><th></th>`;
+            ALL_TYPES.forEach(t => h += `<th>${t.slice(0,1)}</th>`);
+            h += `</tr></thead><tbody>`;
             ALL_TYPES.forEach(row => {
-                html += `<tr><th>${row.slice(0,1)}</th>`;
+                h += `<tr><th>${row.slice(0,1)}</th>`;
                 ALL_TYPES.forEach(col => {
-                    const val = (TYPE_CHART[row] && TYPE_CHART[row][col]) || 1;
-                    let symbol = '';
-                    if (val === 2) symbol = '<span class="effect-best">●</span>';
-                    else if (val === 0.5) symbol = '<span class="effect-weak">▲</span>';
-                    else if (val === 0) symbol = '<span class="effect-none">×</span>';
-                    html += `<td class="cell-${col}">${symbol}</td>`;
+                    const v = TYPE_CHART[row][col] || 1;
+                    const sym = v === 2 ? '<span class="eff-2">●</span>' : v === 0.5 ? '<span class="eff-05">▲</span>' : v === 0 ? '<span class="eff-0">×</span>' : '';
+                    h += `<td class="cell-${col}">${sym}</td>`;
                 });
-                html += `</tr>`;
+                h += `</tr>`;
             });
-            document.getElementById('matrix').innerHTML = html + `</tbody></table>`;
+            document.getElementById('matrix').innerHTML = h + `</tbody></table>`;
         }
 
-        // 修改 renderPocket 以顯示圖片
-        async function renderPocket() {
+        async function spawnRandomEnemy() {
+            const id = Math.floor(Math.random() * 151) + 1;
+            const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
+            const data = await res.json();
+            const types = data.types.map(t => translateType(t.type.name));
+            
+            document.getElementById('enemyName').innerText = data.name.toUpperCase();
+            document.getElementById('enemyImg').src = data.sprites.other["official-artwork"].front_default;
+            document.getElementById('enemyTypes').innerHTML = types.map(t => `<span class="px-2 border border-blue-400 text-[10px] rounded text-blue-400">${t}</span>`).join('');
+            
+            document.querySelectorAll('td').forEach(el => el.classList.remove('highlight-col'));
+            types.forEach(t => document.querySelectorAll(`.cell-${t}`).forEach(el => el.classList.add('highlight-col')));
+            
+            await calculateAdvantage(types); // 觸發建議更新
+        }
+
+        async function calculateAdvantage(enemyTypes) {
             const pokes = await db.myPokemon.toArray();
-            const list = document.getElementById('pocketList');
-            list.innerHTML = pokes.map(p => `
-                <div onclick="showDetail(${p.id})" class="p-3 bg-blue-900/20 rounded-xl border border-blue-500/20 cursor-pointer hover:bg-blue-500/40 flex items-center gap-3">
-                    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.id}.png" class="w-10 h-10 object-contain">
-                    <div class="text-sm font-bold text-white">${p.name}</div>
+            const res = pokes.map(p => {
+                let best = 1;
+                p.types.forEach(myT => {
+                    let m = 1; enemyTypes.forEach(enT => m *= (TYPE_CHART[myT][enT] || 1));
+                    if (m > best) best = m;
+                });
+                return { ...p, score: best };
+            }).sort((a, b) => b.score - a.score);
+
+            document.getElementById('recommendationList').innerHTML = res.map(p => `
+                <div class="bg-blue-900/20 p-3 rounded-xl border border-blue-500/30 flex justify-between items-center animate-fade-in">
+                    <div class="flex items-center gap-2">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.id}.png" class="w-8 h-8">
+                        <div><div class="text-xs font-bold text-white">${p.name}</div><div class="text-[10px] text-blue-400">${p.types.join('/')}</div></div>
+                    </div>
+                    <div class="text-lg font-black ${p.score >= 2 ? 'text-green-400 shadow-[0_0_10px_#4ade80]' : 'text-blue-500'}">${p.score}x</div>
                 </div>`).join('');
         }
 
-        async function showDetail(id) {
-            const p = await db.myPokemon.get(id);
-            document.getElementById('pocketDetail').innerHTML = `
-                <div class="flex flex-col items-center w-full animate-fade-in">
-                    <div class="neon-border p-6 rounded-full bg-blue-900/20 mb-6">
-                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${p.id}.png" class="w-64 h-64 object-contain">
-                    </div>
-                    <h2 class="text-4xl font-black text-white italic underline mb-6">${p.name}</h2>
-                    <div class="w-full max-w-md space-y-4">
-                        ${renderBar('HP', p.hp)} ${renderBar('ATK', p.atk)} ${renderBar('DEF', p.def)} ${renderBar('SPD', p.speed)}
-                    </div>
-                </div>`;
-        }
-
-        function renderBar(l, v) {
-            return `<div class="text-xs mb-2"><div class="flex justify-between mb-1"><span>${l}</span><span class="text-white">${v}</span></div>
-            <div class="h-2 bg-blue-900/50 rounded-full overflow-hidden border border-blue-500/30"><div class="h-full stat-bar-fill" style="width:${(v/150)*100}%"></div></div></div>`;
+        function translateType(en) {
+            const m = {"fire":"火","water":"水","grass":"草","electric":"電","ice":"冰","fighting":"格鬥","poison":"毒","ground":"地面","flying":"飛行","psychic":"超能力","bug":"蟲","rock":"岩石","ghost":"幽靈","dragon":"龍","dark":"惡","steel":"鋼","fairy":"妖精","normal":"一般"};
+            return m[en] || "一般";
         }
 
         function togglePocket() { 
@@ -156,11 +160,37 @@
             if(!m.classList.contains('hidden')) renderPocket(); 
         }
 
-        // 啟動流程
+        async function renderPocket() {
+            const pokes = await db.myPokemon.toArray();
+            document.getElementById('pocketList').innerHTML = pokes.map(p => `
+                <div onclick="showDetail(${p.id})" class="p-3 bg-blue-900/20 rounded-xl border border-blue-500/20 cursor-pointer hover:bg-blue-600/30 flex items-center gap-3">
+                    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.id}.png" class="w-10 h-10">
+                    <div class="text-sm font-bold text-white">${p.name}</div>
+                </div>`).join('');
+        }
+
+        async function showDetail(id) {
+            const p = await db.myPokemon.get(id);
+            document.getElementById('pocketDetail').innerHTML = `
+                <div class="flex flex-col items-center w-full">
+                    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${p.id}.png" class="w-64 h-64 object-contain mb-6 drop-shadow-[0_0_15px_#3b82f6]">
+                    <h2 class="text-4xl font-black text-white italic underline mb-4">${p.name}</h2>
+                    <div class="w-full max-w-md space-y-4">
+                        ${renderBar('HP', p.hp)} ${renderBar('ATK', p.atk)} ${renderBar('DEF', p.def)}
+                    </div>
+                </div>`;
+        }
+
+        function renderBar(l, v) {
+            return `<div class="text-xs mb-2"><div class="flex justify-between mb-1"><span>${l}</span><span class="text-white">${v}</span></div>
+            <div class="h-1.5 bg-blue-900/50 rounded-full overflow-hidden border border-blue-500/30"><div class="h-full bg-blue-500" style="width:${(v/150)*100}%"></div></div></div>`;
+        }
+
+        // 啟動
         (async () => {
             initMatrix();
             await initTestData();
-            spawnRandomEnemy();
+            spawnRandomEnemy(); // 初始加載
         })();
     </script>
 </body>
