@@ -3,132 +3,145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>寶可夢屬性分析儀 - 模組測試 v1.0</title>
+    <title>寶可夢對戰舞台 - 模組測試 v2.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 符號置於 z-index: 100 避免被亮帶遮蓋 */
-        .symbol {
-            position: relative;
-            z-index: 100;
-            font-weight: bold;
-            font-size: 1.2rem;
+        /* 震動動畫 */
+        @keyframes pokemon-shake {
+            0% { transform: translate(0,0) rotate(0deg); }
+            20% { transform: translate(-3px, 1px) rotate(-1deg); }
+            40% { transform: translate(-3px, -1px) rotate(1deg); }
+            60% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(3px, -1px) rotate(1deg); }
+            100% { transform: translate(0,0) rotate(0deg); }
         }
-        /* 亮帶 Alpha 值處理 */
-        .highlight-row { background-color: rgba(239, 68, 68, 0.15) !important; } /* 紅色亮帶 */
-        .highlight-col { background-color: rgba(59, 130, 246, 0.15) !important; } /* 藍色亮帶 */
-        .highlight-cross { background-color: rgba(234, 179, 8, 0.3) !important; } /* 交叉點黃色 */
         
-        .type-cell {
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid #e5e7eb;
-            transition: background-color 0.2s;
-            cursor: crosshair;
+        .is-battling {
+            animation: pokemon-shake 0.2s infinite;
         }
-        .type-header {
-            writing-mode: vertical-lr;
-            text-orientation: upright;
-            font-size: 0.8rem;
-            letter-spacing: 2px;
+
+        .is-critical { /* 40秒後加強震動 */
+            animation: pokemon-shake 0.1s infinite;
+            filter: drop-shadow(0 0 10px red);
+        }
+
+        /* 逃跑動畫：向右慢慢移動並搖晃 */
+        .escape-animation {
+            transition: transform 3s ease-in, opacity 2s;
+            transform: translateX(100vw) rotate(15deg) !important;
+            opacity: 0;
+        }
+
+        /* 閃爍效果 */
+        .is-flashing {
+            animation: pulse-light 0.5s ease-in-out infinite alternate;
+        }
+        @keyframes pulse-light {
+            from { opacity: 1; filter: brightness(1); }
+            to { opacity: 0.7; filter: brightness(1.5); }
+        }
+
+        .battle-bg {
+            background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+            min-height: 400px;
         }
     </style>
 </head>
-<body class="bg-gray-100 p-4 md:p-8 font-sans">
+<body class="bg-gray-900 text-white p-4">
 
-    <div class="max-w-5xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
-        <div class="bg-red-600 text-white p-4 text-center">
-            <h1 class="text-2xl font-bold tracking-widest">屬性分析儀 (V6.0+)</h1>
-            <p class="text-sm opacity-80">十字定位系統：水平(攻擊方) x 垂直(被攻擊方)</p>
+    <div class="max-w-6xl mx-auto mb-4 flex justify-between items-center bg-black p-4 rounded-lg border-2 border-red-600">
+        <div class="text-xl font-bold">戰鬥狀態: <span id="status-text" class="text-green-400">準備中</span></div>
+        <div class="text-3xl font-mono text-yellow-400">TIME: <span id="timer">00</span>s</div>
+    </div>
+
+    <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4 battle-bg p-8 rounded-3xl border-4 border-gray-700 relative overflow-hidden">
+        
+        <div class="flex flex-col items-center justify-center space-y-4">
+            <div class="bg-red-900/30 p-2 rounded-lg text-red-400 font-bold border border-red-500">ENEMY</div>
+            <div id="enemy-pokemon" class="w-48 h-48 bg-contain bg-no-repeat bg-center transition-all duration-500" 
+                 style="background-image: url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/150.png');">
+            </div>
+            <div class="w-full bg-gray-700 h-4 rounded-full overflow-hidden">
+                <div id="enemy-hp" class="bg-green-500 h-full w-full transition-all duration-500"></div>
+            </div>
         </div>
 
-        <div class="overflow-x-auto p-4 flex justify-center">
-            <div id="type-grid" class="grid grid-cols-[auto_repeat(18,_minmax(40px,_1fr))] border-l border-t">
-                <div class="bg-gray-200 border-b border-r p-2 flex items-center justify-center font-bold text-xs">被\攻</div>
-                </div>
+        <div class="flex items-center justify-center border-x border-gray-700 px-4">
+            <div id="math-zone" class="text-center">
+                <p class="text-gray-400 mb-4">-- 乘法對戰區 --</p>
+                <div class="text-6xl font-black text-white mb-8">9 × 9 = ?</div>
+                <button onclick="startBattle()" id="start-btn" class="bg-red-600 hover:bg-red-700 text-white px-10 py-4 rounded-full text-2xl font-bold shadow-lg transform active:scale-95 transition">
+                    開始戰鬥！
+                </button>
+            </div>
         </div>
 
-        <div class="bg-gray-50 p-4 border-t flex flex-wrap justify-center gap-6 text-sm">
-            <div class="flex items-center"><span class="text-red-500 mr-2">●</span> 效果絕佳 (2x)</div>
-            <div class="flex items-center"><span class="text-blue-500 mr-2">▲</span> 效果欠佳 (0.5x)</div>
-            <div class="flex items-center"><span class="text-gray-400 mr-2">×</span> 幾乎沒有效果 (0x)</div>
-            <div class="flex items-center"><span class="w-4 h-4 border border-gray-300 mr-2"></span> 普通效果 (1x)</div>
+        <div class="flex flex-col items-center justify-center space-y-4">
+            <div class="bg-blue-900/30 p-2 rounded-lg text-blue-400 font-bold border border-blue-500">PLAYER</div>
+            <div id="player-pokemon" class="w-48 h-48 bg-contain bg-no-repeat bg-center" 
+                 style="background-image: url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png'); transform: scaleX(-1);">
+            </div>
+            <div class="w-full bg-gray-700 h-4 rounded-full">
+                <div class="bg-blue-500 h-full w-full"></div>
+            </div>
         </div>
     </div>
 
+    <div class="max-w-6xl mx-auto mt-8 flex gap-4 justify-center">
+        <button onclick="simulateKO()" class="bg-yellow-500 text-black px-4 py-2 rounded">模擬 KO (進入收服)</button>
+    </div>
+
     <script>
-        const types = ['一般', '格鬥', '飛行', '毒', '地上', '岩石', '蟲', '幽靈', '鋼', '炎', '水', '草', '電', '超能力', '冰', '龍', '惡', '妖精'];
-        
-        // 簡化版相剋資料 (範例)
-        const relations = {
-            '格鬥': { '一般': '●', '岩石': '●', '鋼': '●', '冰': '●', '惡': '●', '飛行': '▲', '毒': '▲', '蟲': '▲', '超能力': '▲', '妖精': '▲', '幽靈': '×' },
-            '炎': { '蟲': '●', '鋼': '●', '草': '●', '冰': '●', '岩石': '▲', '炎': '▲', '水': '▲', '龍': '▲' },
-            // ... 其他資料可在此擴充
-        };
+        let time = 0;
+        let timerInterval;
 
-        const grid = document.getElementById('type-grid');
+        function startBattle() {
+            // 初始化介面
+            document.getElementById('start-btn').classList.add('hidden');
+            document.getElementById('status-text').innerText = "戰鬥中！";
+            document.getElementById('status-text').className = "text-red-500";
+            
+            // 啟動閃爍與震動
+            document.getElementById('enemy-pokemon').classList.add('is-battling', 'is-flashing');
+            document.getElementById('player-pokemon').classList.add('is-battling', 'is-flashing');
 
-        // 1. 生成頂部攻擊方標題
-        types.forEach(t => {
-            const el = document.createElement('div');
-            el.className = 'bg-red-50 border-b border-r p-1 text-center font-bold text-red-700 flex items-center justify-center text-xs h-12';
-            el.innerText = t;
-            el.dataset.col = t;
-            grid.appendChild(el);
-        });
+            // 啟動計時器
+            timerInterval = setInterval(() => {
+                time++;
+                document.getElementById('timer').innerText = time < 10 ? '0'+time : time;
 
-        // 2. 生成每一行 (被攻擊方)
-        types.forEach((defType, rowIndex) => {
-            // 行首屬性名
-            const rowHeader = document.createElement('div');
-            rowHeader.className = 'bg-blue-50 border-b border-r p-2 font-bold text-blue-700 flex items-center justify-center text-xs w-12';
-            rowHeader.innerText = defType;
-            rowHeader.dataset.row = defType;
-            grid.appendChild(rowHeader);
-
-            // 生成該行的 18 個格子
-            types.forEach((atkType, colIndex) => {
-                const cell = document.createElement('div');
-                cell.className = 'type-cell border-b border-r';
-                cell.dataset.row = defType;
-                cell.dataset.col = atkType;
-
-                // 填入符號
-                let symbol = '';
-                if (relations[atkType] && relations[atkType][defType]) {
-                    symbol = relations[atkType][defType];
+                // 20s KO 門檻 (手冊邏輯)
+                if (time === 20) {
+                    document.getElementById('status-text').innerText = "快！HP 減半門檻！";
                 }
-                
-                const span = document.createElement('span');
-                span.className = 'symbol ' + (symbol === '●' ? 'text-red-500' : symbol === '▲' ? 'text-blue-500' : 'text-gray-400');
-                span.innerText = symbol;
-                cell.appendChild(span);
 
-                // 十字高亮邏輯實作
-                cell.addEventListener('mouseenter', () => highlight(defType, atkType));
-                cell.addEventListener('mouseleave', clearHighlight);
+                // 40s HP 減半門檻 (加強震動)
+                if (time === 40) {
+                    document.getElementById('enemy-hp').style.width = "50%";
+                    document.getElementById('enemy-pokemon').classList.add('is-critical');
+                    document.getElementById('status-text').innerText = "警告：即將逃跑！";
+                }
 
-                grid.appendChild(cell);
-            });
-        });
-
-        function highlight(rowName, colName) {
-            clearHighlight();
-            // 高亮行
-            document.querySelectorAll(`[data-row="${rowName}"]`).forEach(el => el.classList.add('highlight-row'));
-            // 高亮列
-            document.querySelectorAll(`[data-col="${colName}"]`).forEach(el => el.classList.add('highlight-col'));
-            // 高亮交叉點
-            const cross = document.querySelector(`[data-row="${rowName}"][data-col="${colName}"]`);
-            if (cross) cross.classList.add('highlight-cross');
+                // 60s 逃跑限制
+                if (time >= 60) {
+                    triggerEscape();
+                }
+            }, 1000);
         }
 
-        function clearHighlight() {
-            document.querySelectorAll('.highlight-row').forEach(el => el.classList.remove('highlight-row'));
-            document.querySelectorAll('.highlight-col').forEach(el => el.classList.remove('highlight-col'));
-            document.querySelectorAll('.highlight-cross').forEach(el => el.classList.remove('highlight-cross'));
+        function triggerEscape() {
+            clearInterval(timerInterval);
+            document.getElementById('status-text').innerText = "寶可夢逃走了...";
+            document.getElementById('enemy-pokemon').classList.remove('is-battling', 'is-flashing', 'is-critical');
+            document.getElementById('enemy-pokemon').classList.add('escape-animation');
+            // 移除我方震動
+            document.getElementById('player-pokemon').classList.remove('is-battling', 'is-flashing');
+        }
+
+        function simulateKO() {
+            clearInterval(timerInterval);
+            alert("KO！準備進入收服畫面 (下個模組測試)");
+            location.reload();
         }
     </script>
 </body>
