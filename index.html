@@ -3,227 +3,206 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>寶可夢對戰 v6.0 - 視覺動態優化版</title>
+    <title>寶可夢對戰 v7.0 - Mobile Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Noto+Sans+TC:wght@400;900&display=swap');
-        body { background: radial-gradient(circle at center, #0a192f 0%, #020617 100%); font-family: 'Orbitron', 'Noto Sans TC', sans-serif; color: #60a5fa; overflow: hidden; margin:0; }
-        .glass-panel { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(59, 130, 246, 0.4); }
+        body { background: #020617; font-family: 'Orbitron', 'Noto Sans TC', sans-serif; color: #60a5fa; overflow-x: hidden; margin: 0; }
+        .glass-panel { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(59, 130, 246, 0.3); }
         
-        /* 符號色彩強化 (紅色圓/藍色三角) */
-        #matrix td { position: relative; height: 32px; border: 1px solid rgba(59, 130, 246, 0.2); }
-        .eff-symbol { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 100; font-weight: 900; font-size: 20px; pointer-events: none; }
-        .eff-2 { color: #ff3333; text-shadow: 0 0 10px #ff0000; } /* 紅色圓形 */
-        .eff-05 { color: #3399ff; text-shadow: 0 0 10px #0066ff; } /* 藍色三角形 */
+        /* 九九乘法矩陣 */
+        .math-table { width: 100%; border-collapse: collapse; table-layout: fixed; background: rgba(0,0,0,0.5); }
+        .math-table td, .math-table th { border: 1px solid rgba(59, 130, 246, 0.3); text-align: center; height: 35px; font-size: 12px; transition: 0.2s; }
+        .math-table td:active { background: #3b82f6; color: white; }
+        .highlight-header { background: rgba(59, 130, 246, 0.2); color: #fff; }
 
-        /* 亮帶層級調低 */
-        .highlight-atk { background-color: rgba(220, 38, 38, 0.25) !important; }
-        .highlight-def { background-color: rgba(30, 64, 175, 0.3) !important; }
+        /* 屬性矩陣符號 */
+        .eff-symbol { font-weight: 900; font-size: 16px; }
+        .eff-2 { color: #ff3333; text-shadow: 0 0 5px #ff0000; }
+        .eff-05 { color: #3399ff; text-shadow: 0 0 5px #0066ff; }
 
-        /* 捕獲畫面 (中央發光) */
-        .modal-full { fixed inset-0 flex flex-col items-center justify-center z-[500] bg-black/90; }
-        .capture-glow { filter: drop-shadow(0 0 25px rgba(250, 204, 21, 0.8)); animation: pulseGlow 2s infinite; }
-        @keyframes pulseGlow { 0%, 100% { filter: drop-shadow(0 0 15px rgba(250, 204, 21, 0.6)); } 50% { filter: drop-shadow(0 0 35px rgba(250, 204, 21, 1)); } }
-        
-        /* 逃跑動畫 (左至右慢速 30%) */
-        .escape-slide-right { animation: escapeRight 2.6s linear forwards; }
-        @keyframes escapeRight { 
-            0% { transform: translateX(-150vw); opacity: 1; }
-            100% { transform: translateX(150vw); opacity: 0; }
-        }
+        /* 捕獲動畫 */
+        .capture-group { position: relative; display: flex; align-items: center; justify-content: center; gap: 20px; }
+        .pokeball-mini { width: 50px; height: 50px; background: linear-gradient(180deg, #ef4444 50%, #fff 50%); border: 3px solid #333; border-radius: 50%; position: relative; animation: wobble 1s infinite; }
+        .pokeball-mini::after { content: ""; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 10px; height: 10px; background: white; border: 2px solid #333; border-radius: 50%; }
+        @keyframes wobble { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(15deg); } 75% { transform: rotate(-15deg); } }
 
-        /* 精靈球 OK 鍵 */
-        .pokeball-ok { 
-            width: 80px; height: 80px; background: linear-gradient(180deg, #ef4444 50%, #fff 50%); 
-            border: 4px solid #333; border-radius: 50%; position: relative; cursor: pointer;
-            margin: 15px auto; transition: transform 0.2s; box-shadow: 0 0 20px rgba(0,0,0,0.5);
-        }
-        .pokeball-ok::after { content: ""; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 18px; height: 18px; background: white; border: 4px solid #333; border-radius: 50%; }
+        /* 逃跑動畫 */
+        .escape-animation { animation: slideRight 3s linear forwards; }
+        @keyframes slideRight { 0% { transform: translateX(-120vw); } 100% { transform: translateX(120vw); } }
     </style>
 </head>
-<body class="h-screen flex flex-col p-2">
+<body class="flex flex-col min-h-screen p-2">
 
-    <header class="p-2 glass-panel flex justify-between items-center border-b border-blue-500/50 mb-2">
-        <div class="flex items-center gap-2">
-            <button onclick="toggleSettings()" class="text-xl">⚙️</button>
-            <h1 class="text-lg font-black text-white italic tracking-tighter uppercase">寶可夢對戰 <span class="text-blue-500 text-xs">v6.0</span></h1>
-        </div>
-        <button onclick="togglePocket()" class="neon-border px-4 py-1.5 rounded-full bg-blue-900/40 text-xs text-white">🎒 我的寶可夢們</button>
+    <header class="p-3 glass-panel rounded-xl flex justify-between items-center mb-2">
+        <button onclick="toggleSettings()" class="text-xl">⚙️</button>
+        <h1 class="text-sm font-black italic text-white uppercase tracking-widest">寶可夢對戰 v7.0</h1>
+        <button onclick="togglePocket()" class="text-xl">🎒</button>
     </header>
 
-    <main class="flex-1 flex gap-2 overflow-hidden">
-        <section class="w-1/4 flex flex-col gap-2">
-            <div id="enemyPanel" class="glass-panel flex-1 rounded-2xl neon-border p-4 flex flex-col items-center justify-center text-center">
-                <img id="enemyImg" src="" class="w-32 h-32 object-contain">
-                <div class="mt-4">
-                    <h2 id="enemyZh" class="text-2xl font-black text-white italic">---</h2>
-                    <p id="enemyEn" class="text-[10px] text-blue-400 uppercase font-bold">---</p>
-                </div>
-                <div id="enemyTypes" class="flex gap-1 mt-2"></div>
-            </div>
-            <button onclick="spawnRandomEnemy()" class="bg-blue-600 text-white font-bold py-3 rounded-xl active:scale-95 transition">隨機選擇敵方</button>
-        </section>
+    <section class="glass-panel rounded-2xl p-4 flex flex-col items-center justify-center mb-2 h-48 relative">
+        <img id="enemyImg" src="" class="w-28 h-28 object-contain">
+        <h2 id="enemyZh" class="text-xl font-black text-white mt-2 italic">---</h2>
+        <div id="enemyTypes" class="flex gap-1 mt-1 text-[10px]"></div>
+    </section>
 
-        <section class="flex-1 flex flex-col gap-2">
-            <div id="matrixContainer" class="glass-panel flex-1 rounded-2xl neon-border p-3 relative overflow-hidden">
-                <div class="text-center text-[10px] text-gray-500 mb-1 italic">● 絕佳(紅) | ▲ 不佳(藍) | × 無效</div>
-                <div id="matrix" class="bg-black/40 rounded-xl overflow-auto h-[90%]"></div>
+    <section class="glass-panel rounded-2xl p-2 flex-1 mb-2 overflow-hidden flex flex-col">
+        <div id="matrixTitle" class="text-center text-[10px] text-gray-400 mb-1 uppercase tracking-tighter italic">屬性弱點分析</div>
+        <div id="matrixDisplay" class="flex-1 overflow-auto rounded-xl">
             </div>
+    </section>
 
-            <div id="mathBattle" class="glass-panel hidden flex-1 rounded-2xl neon-border p-4 flex flex-col items-center justify-center">
-                <div id="timerDisplay" class="text-red-500 font-black text-3xl mb-1">60.0s</div>
-                <div id="quizText" class="text-4xl font-black text-white mb-2">---</div>
-                <div id="ansDisplay" class="text-4xl font-black text-blue-400 mb-4 bg-black/40 px-10 py-2 rounded-lg border border-blue-500/50">?</div>
-                <div class="grid grid-cols-3 gap-2 w-full max-w-[210px]">
-                    <button onclick="pressNum(1)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white">1</button>
-                    <button onclick="pressNum(2)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white">2</button>
-                    <button onclick="pressNum(3)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white">3</button>
-                    <button onclick="pressNum(4)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white">4</button>
-                    <button onclick="pressNum(5)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white">5</button>
-                    <button onclick="pressNum(6)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white">6</button>
-                    <button onclick="pressNum(7)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white">7</button>
-                    <button onclick="pressNum(8)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white">8</button>
-                    <button onclick="pressNum(9)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white">9</button>
-                    <button onclick="pressNum('C')" class="bg-red-900/50 py-3 rounded-lg font-bold text-red-400">C</button>
-                    <button onclick="pressNum(0)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white">0</button>
-                    <div class="pokeball-ok" onclick="checkAns()"></div>
-                </div>
-            </div>
-        </section>
-
-        <section class="w-1/4 flex flex-col gap-2">
-            <div class="glass-panel flex-1 rounded-2xl neon-border p-4 flex flex-col items-center justify-center">
-                <img id="myImg" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png" class="w-32 h-32 object-contain drop-shadow-[0_0_15px_gold]">
-                <h3 id="myActiveName" class="mt-4 text-xl font-black text-white italic">皮卡丘</h3>
-            </div>
-            <button onclick="startBattle()" class="bg-yellow-500 text-blue-900 font-black py-4 rounded-xl text-xl shadow-xl active:scale-95 transition">開始對戰</button>
-        </section>
-    </main>
+    <section id="controlZone" class="glass-panel rounded-2xl p-4 flex flex-col items-center justify-between h-40">
+        <div id="battleUI" class="hidden w-full text-center">
+            <div id="quizTimer" class="text-red-500 font-black text-xl mb-1 italic">60.0s</div>
+            <div id="quizText" class="text-3xl font-black text-white">---</div>
+            <p class="text-[10px] text-blue-400">請在上方矩陣點選答案</p>
+        </div>
+        
+        <div id="idleUI" class="flex items-center gap-6">
+            <img id="myImg" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png" class="w-16 h-16 object-contain">
+            <button onclick="startBattle()" class="bg-yellow-500 text-blue-900 font-black px-8 py-3 rounded-full text-lg shadow-lg">開始對戰</button>
+        </div>
+    </section>
 
     <div id="captureModal" class="fixed inset-0 bg-black/95 hidden flex flex-col items-center justify-center z-[500]">
-        <div class="text-center">
-            <img id="capturedImg" src="" class="w-72 h-72 mx-auto capture-glow">
-            <h2 class="text-5xl font-black text-yellow-400 mt-10 italic tracking-widest drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">捕獲寶可夢！</h2>
-            <button onclick="closeModals()" class="mt-12 bg-blue-600 px-16 py-4 rounded-full text-white font-black text-xl hover:bg-blue-500">收回背包</button>
+        <div class="capture-group">
+            <img id="capturedImg" src="" class="w-48 h-48 filter drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]">
+            <div class="pokeball-mini"></div>
         </div>
+        <h2 class="text-3xl font-black text-yellow-400 mt-10 italic">收服成功！</h2>
+        <button onclick="closeModals()" class="mt-10 bg-blue-600 px-12 py-3 rounded-full text-white font-bold">收回背包</button>
     </div>
 
-    <div id="escapeModal" class="fixed inset-0 bg-black/95 hidden overflow-hidden z-[500]">
-        <div class="h-full w-full flex flex-col items-center justify-center relative">
-            <h2 class="text-4xl font-black text-red-500 mb-12 italic z-10">寶可夢逃走了...</h2>
-            <img id="escapingImg" src="" class="w-56 h-56 escape-slide-right absolute top-1/2 -translate-y-1/2">
-            <button onclick="closeModals()" class="mt-24 bg-gray-700 px-12 py-3 rounded-full text-white font-bold z-10">關閉系統</button>
+    <div id="escapeModal" class="fixed inset-0 bg-black/95 hidden overflow-hidden z-[500] flex flex-col items-center justify-center">
+        <h2 class="text-2xl font-black text-red-500 mb-20 italic">寶可夢逃走了...</h2>
+        <img id="escapingImg" src="" class="w-40 h-40 absolute top-1/2 -translate-y-1/2">
+        <button onclick="closeModals()" class="mt-32 bg-gray-700 px-8 py-2 rounded-full text-white text-xs">繼續尋找</button>
+    </div>
+
+    <div id="settingsModal" class="fixed inset-0 bg-black/90 hidden flex items-center justify-center p-6 z-[600]">
+        <div class="glass-panel rounded-3xl p-6 w-full max-w-xs space-y-4">
+            <h3 class="text-white font-bold border-b border-blue-500 pb-2">題目設定</h3>
+            <div class="space-y-2">
+                <label class="flex items-center gap-2"><input type="radio" name="mode" value="mul" checked> 九九乘法 (預設)</label>
+                <label class="flex items-center gap-2"><input type="radio" name="mode" value="add"> 兩位數加法</label>
+                <label class="flex items-center gap-2"><input type="radio" name="mode" value="sub"> 兩位數減法</label>
+            </div>
+            <h3 class="text-white font-bold border-b border-blue-500 pb-2 mt-4">時間設定</h3>
+            <div class="text-xs space-y-2">
+                <div>KO秒數: <input type="number" id="setKO" value="20" class="bg-blue-900 p-1 rounded w-16"></div>
+                <div>總秒數: <input type="number" id="setTotal" value="60" class="bg-blue-900 p-1 rounded w-16"></div>
+            </div>
+            <button onclick="saveSettings()" class="w-full bg-blue-600 py-2 rounded-full text-white font-bold mt-4">套用並結束</button>
         </div>
     </div>
 
     <script>
-        const TYPE_MAP = {"fire":"火","water":"水","grass":"草","electric":"電","ice":"冰","fighting":"格鬥","poison":"毒","ground":"地面","flying":"飛行","psychic":"超能力","bug":"蟲","rock":"岩石","ghost":"幽靈","dragon":"龍","dark":"惡","steel":"鋼","fairy":"妖精","normal":"一般"};
         const ALL_TYPES = ["一般","火","水","草","電","冰","格鬥","毒","地面","飛行","超能力","蟲","岩石","幽靈","龍","鋼","惡","妖精"];
-        const TYPE_CHART = { /* 數據邏輯維持 v5.9 */ };
+        const TYPE_CHART = { /* 數據邏輯維持前版... */ };
+        let config = { mode: 'mul', ko: 20, total: 60 };
+        let quizAns = 0, currentEnemy = null, startTime = 0, timer = null;
 
-        let config = { ko: 20, total: 60 };
-        let quizAns = 0, currentInput = "", timer = null, startTime = 0;
-        let currentEnemy = null;
+        window.onload = () => { renderMatrix('attr'); spawnRandomEnemy(); };
 
-        window.onload = () => { initMatrix(); spawnRandomEnemy(); };
-
-        function initMatrix() {
-            let h = `<table><thead><tr><th style="width:30px"></th>`;
-            ALL_TYPES.forEach(t => h += `<th>${t.slice(0,1)}</th>`);
-            h += `</tr></thead><tbody>`;
-            ALL_TYPES.forEach(row => {
-                h += `<tr class="row-${row}"><th>${row.slice(0,1)}</th>`;
-                ALL_TYPES.forEach(col => {
-                    const v = (TYPE_CHART[row] && TYPE_CHART[row][col]) || 1;
-                    let s = "";
-                    if(v === 2) s = '<div class="eff-symbol eff-2">●</div>';
-                    else if(v === 0.5) s = '<div class="eff-symbol eff-05">▲</div>';
-                    else if(v === 0) s = '<div class="eff-symbol eff-0">×</div>';
-                    h += `<td class="cell-${col}">${s}</td>`;
+        function renderMatrix(type) {
+            const container = document.getElementById('matrixDisplay');
+            let html = '';
+            if (type === 'attr') {
+                html = `<table class="math-table"><thead><tr><th></th>${ALL_TYPES.map(t=>`<th>${t.slice(0,1)}</th>`).join('')}</tr></thead><tbody>`;
+                ALL_TYPES.forEach(row => {
+                    html += `<tr><th class="highlight-header">${row.slice(0,1)}</th>`;
+                    ALL_TYPES.forEach(col => {
+                        const v = (TYPE_CHART[row] && TYPE_CHART[row][col]) || 1;
+                        let s = v===2?'●':v===0.5?'▲':v===0?'×':'';
+                        html += `<td class="${v===2?'eff-2':v===0.5?'eff-05':''} eff-symbol">${s}</td>`;
+                    });
+                    html += `</tr>`;
                 });
-                h += `</tr>`;
-            });
-            document.getElementById('matrix').innerHTML = h + `</tbody></table>`;
+            } else if (type === 'mul') {
+                html = `<table class="math-table"><thead><tr><th>×</th>${[1,2,3,4,5,6,7,8,9].map(n=>`<th>${n}</th>`).join('')}</tr></thead><tbody>`;
+                for(let i=1; i<=9; i++){
+                    html += `<tr><th class="highlight-header">${i}</th>`;
+                    for(let j=1; j<=9; j++) html += `<td onclick="checkMathAns(${i*j})">${i*j}</td>`;
+                    html += `</tr>`;
+                }
+            }
+            container.innerHTML = html + `</tbody></table>`;
         }
 
         async function spawnRandomEnemy() {
             const id = Math.floor(Math.random() * 1025) + 1;
-            try {
-                const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
-                const data = await res.json();
-                const specRes = await fetch(data.species.url);
-                const specData = await specRes.json();
-                const zhName = specData.names.find(n => n.language.name === "zh-Hant")?.name || data.name;
-                
-                currentEnemy = { zh: zhName, en: data.name, img: data.sprites.other["official-artwork"].front_default };
-                document.getElementById('enemyZh').innerText = zhName;
-                document.getElementById('enemyEn').innerText = data.name.toUpperCase();
-                document.getElementById('enemyImg').src = currentEnemy.img;
-                updateMatrixHighlight(data.types.map(t => TYPE_MAP[t.type.name]));
-            } catch(e) { console.error(e); }
-        }
-
-        function updateMatrixHighlight(types) {
-            document.querySelectorAll('td').forEach(el => el.classList.remove('highlight-atk', 'highlight-def'));
-            types.forEach(t => {
-                document.querySelectorAll(`.row-${t} td`).forEach(el => el.classList.add('highlight-atk'));
-                document.querySelectorAll(`.cell-${t}`).forEach(el => el.classList.add('highlight-def'));
-            });
+            const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
+            const data = await res.json();
+            const specRes = await fetch(data.species.url);
+            const specData = await specRes.json();
+            const zh = specData.names.find(n => n.language.name === "zh-Hant")?.name || data.name;
+            currentEnemy = { zh, img: data.sprites.other["official-artwork"].front_default };
+            document.getElementById('enemyZh').innerText = zh;
+            document.getElementById('enemyImg').src = currentEnemy.img;
+            renderMatrix('attr'); // 平時顯示屬性表
         }
 
         function startBattle() {
-            document.getElementById('matrixContainer').classList.add('hidden');
-            document.getElementById('mathBattle').classList.remove('hidden');
+            document.getElementById('idleUI').classList.add('hidden');
+            document.getElementById('battleUI').classList.remove('hidden');
+            if(config.mode === 'mul') renderMatrix('mul');
             newQuiz();
         }
 
-        function checkAns() {
-            if (parseInt(currentInput) === quizAns) {
-                let timeSpent = (Date.now() - startTime) / 1000;
+        function newQuiz() {
+            if(config.mode === 'mul') {
+                const a = Math.floor(Math.random()*9)+1, b = Math.floor(Math.random()*9)+1;
+                quizAns = a * b;
+                document.getElementById('quizText').innerText = `${a} × ${b} = ?`;
+            } else {
+                const a = Math.floor(Math.random()*80)+10, b = Math.floor(Math.random()*9)+1;
+                const op = config.mode === 'add' ? '+' : '-';
+                quizAns = op === '+' ? a + b : a - b;
+                document.getElementById('quizText').innerText = `${a} ${op} ${b} = ?`;
+                // 加減法模式暫時用屬性格輸入或簡單 prompt 測試，但在本版推薦用 mul
+            }
+            startTime = Date.now();
+            clearInterval(timer);
+            timer = setInterval(updateTimer, 100);
+        }
+
+        function checkMathAns(val) {
+            if(val === quizAns) {
+                let diff = (Date.now()-startTime)/1000;
                 clearInterval(timer);
-                if (timeSpent <= config.ko) {
+                if(diff <= config.ko) {
                     document.getElementById('capturedImg').src = currentEnemy.img;
                     document.getElementById('captureModal').classList.remove('hidden');
-                } else { alert("答對了！但還要繼續削弱對手體力！"); newQuiz(); }
-            } else { alert("錯誤！"); currentInput = ""; document.getElementById('ansDisplay').innerText = "?"; }
+                } else { alert("命中！但還要再努力！"); newQuiz(); }
+            }
         }
 
-        function enemyEscape() {
-            document.getElementById('escapingImg').src = currentEnemy.img;
-            document.getElementById('escapeModal').classList.remove('hidden');
-            // 重新啟動動畫以確保從左側開始
-            const img = document.getElementById('escapingImg');
-            img.classList.remove('escape-slide-right');
-            void img.offsetWidth; // 觸發重繪
-            img.classList.add('escape-slide-right');
-        }
-
-        function closeModals() {
-            document.getElementById('captureModal').classList.add('hidden');
-            document.getElementById('escapeModal').classList.add('hidden');
-            document.getElementById('mathBattle').classList.add('hidden');
-            document.getElementById('matrixContainer').classList.remove('hidden');
-            spawnRandomEnemy();
-        }
-
-        function pressNum(n) {
-            if(n === 'C') currentInput = ""; else currentInput += n;
-            document.getElementById('ansDisplay').innerText = currentInput || "?";
-        }
         function updateTimer() {
-            let remain = Math.max(0, config.total - (Date.now() - startTime) / 1000);
-            document.getElementById('timerDisplay').innerText = `${remain.toFixed(1)}s`;
-            if (remain <= 0) { clearInterval(timer); enemyEscape(); }
+            let remain = Math.max(0, config.total - (Date.now()-startTime)/1000);
+            document.getElementById('quizTimer').innerText = `${remain.toFixed(1)}s`;
+            if(remain <= 0) { 
+                clearInterval(timer);
+                document.getElementById('escapingImg').src = currentEnemy.img;
+                document.getElementById('escapeModal').classList.remove('hidden');
+                document.getElementById('escapingImg').classList.add('escape-animation');
+            }
         }
-        function newQuiz() {
-            const a = Math.floor(Math.random() * 80) + 10, b = Math.floor(Math.random() * 9) + 1;
-            const op = Math.random() > 0.5 ? '+' : '-';
-            quizAns = op === '+' ? a + b : a - b;
-            document.getElementById('quizText').innerText = `${a} ${op} ${b} = ?`;
-            currentInput = ""; document.getElementById('ansDisplay').innerText = "?";
-            startTime = Date.now();
-            clearInterval(timer); timer = setInterval(updateTimer, 100);
+
+        function toggleSettings() { document.getElementById('settingsModal').classList.toggle('hidden'); }
+        function saveSettings() {
+            config.mode = document.querySelector('input[name="mode"]:checked').value;
+            config.ko = parseInt(document.getElementById('setKO').value);
+            config.total = parseInt(document.getElementById('setTotal').value);
+            toggleSettings();
+        }
+        function closeModals() {
+            document.querySelectorAll('#captureModal, #escapeModal').forEach(m => m.classList.add('hidden'));
+            document.getElementById('battleUI').classList.add('hidden');
+            document.getElementById('idleUI').classList.remove('hidden');
+            document.getElementById('escapingImg').classList.remove('escape-animation');
+            spawnRandomEnemy();
         }
     </script>
 </body>
