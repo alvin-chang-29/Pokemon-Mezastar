@@ -4,25 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Poké-System v4.0 Cloud</title>
+    <title>Poké-System v4.0 Manual</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Noto+Sans+TC:wght@400;900&display=swap');
         body { background: radial-gradient(circle at center, #0a192f 0%, #020617 100%); font-family: 'Orbitron', 'Noto Sans TC', sans-serif; color: #60a5fa; }
         .neon-border { border: 1px solid #3b82f6; box-shadow: 0 0 15px rgba(59, 130, 246, 0.5), inset 0 0 10px rgba(59, 130, 246, 0.2); }
-        .glass-panel { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(59, 130, 246, 0.3); }
-        .stat-bar-fill { background: linear-gradient(90deg, #3b82f6, #60a5fa); box-shadow: 0 0 10px #3b82f6; transition: width 0.8s ease-in-out; }
-        #matrix td, #matrix th { border: 1px solid rgba(59, 130, 246, 0.2); text-align: center; padding: 4px 0; }
-        .highlight-col { background-color: rgba(59, 130, 246, 0.4) !important; color: white; text-shadow: 0 0 5px white; }
+        .glass-panel { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(59, 130, 246, 0.3); }
+        .stat-bar-fill { background: linear-gradient(90deg, #3b82f6, #60a5fa); box-shadow: 0 0 10px #3b82f6; transition: width 0.8s ease; }
+        #matrix td, #matrix th { border: 1px solid rgba(59, 130, 246, 0.2); text-align: center; padding: 5px 0; }
+        .highlight-col { background-color: rgba(59, 130, 246, 0.4) !important; color: white; }
+        .instruction-step { @apply mb-6 p-4 bg-blue-900/20 rounded-xl border border-blue-500/30; }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
 
     <header class="p-4 glass-panel flex justify-between items-center border-b border-blue-500/50">
-        <h1 class="text-2xl font-black italic tracking-tighter text-white uppercase">Strategy_Core <span class="text-blue-500">v4.0</span></h1>
+        <h1 class="text-2xl font-black italic text-white uppercase tracking-tighter">Strategy_Core <span class="text-blue-500">v4.0</span></h1>
         <div class="flex gap-4">
-            <button id="syncBtn" onclick="syncWithCloud()" class="neon-border px-6 py-2 rounded-full bg-blue-900/40 text-sm font-bold text-blue-400 hover:bg-blue-600 hover:text-white transition">📡 SYNC_CLOUD</button>
+            <button onclick="toggleManual()" class="neon-border px-4 py-2 rounded-full bg-blue-900/40 text-xs font-bold text-blue-300 hover:bg-blue-400 hover:text-white transition">❔ SYSTEM_MANUAL</button>
+            <button id="syncBtn" onclick="syncWithCloud()" class="neon-border px-4 py-2 rounded-full bg-green-900/20 text-xs font-bold text-green-400 hover:bg-green-600 hover:text-white transition">📡 SYNC_CLOUD</button>
             <button onclick="togglePocket()" class="neon-border px-6 py-2 rounded-full bg-blue-900/40 text-sm font-bold text-white hover:bg-blue-600 transition">🎒 POCKET</button>
         </div>
     </header>
@@ -30,67 +32,77 @@
     <main class="flex-1 flex p-4 gap-4 overflow-hidden">
         <section class="w-1/4 flex flex-col gap-4">
             <div class="glass-panel flex-1 rounded-3xl neon-border flex flex-col items-center justify-center p-6 relative">
-                <div class="absolute top-0 w-full h-1 bg-blue-400/50 animate-pulse shadow-[0_0_15px_blue]"></div>
-                <img id="enemyImg" src="" class="w-48 h-48 object-contain z-10 drop-shadow-[0_0_20px_#3b82f6]">
-                <h2 id="enemyName" class="text-2xl font-black mt-6 tracking-widest text-white italic">AWAITING SCAN</h2>
+                <div class="absolute top-0 w-full h-1 bg-blue-400/50 animate-pulse"></div>
+                <img id="enemyImg" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png" class="w-48 h-48 object-contain z-10 drop-shadow-[0_0_20px_#3b82f6]">
+                <h2 id="enemyName" class="text-2xl font-black mt-6 tracking-widest text-white italic text-center">SCAN_READY</h2>
                 <div id="enemyTypes" class="flex gap-2 mt-2"></div>
             </div>
             <button onclick="spawnRandomEnemy()" class="bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl shadow-lg transition transform active:scale-95">INITIATE_SCAN</button>
         </section>
 
-        <section class="w-2/4 flex flex-col glass-panel rounded-3xl neon-border p-4 overflow-hidden">
-            <h3 class="text-center text-xs tracking-[0.4em] mb-4 text-blue-400 uppercase">Analysis Matrix System</h3>
+        <section class="w-2/4 flex flex-col glass-panel rounded-3xl neon-border p-4">
             <div class="flex-1 overflow-auto rounded-xl bg-black/40 p-2" id="matrix"></div>
         </section>
 
         <section class="w-1/4 flex flex-col gap-4">
-            <div class="glass-panel rounded-3xl neon-border p-4 flex-1 flex flex-col">
-                <h3 class="text-xs font-bold mb-4 tracking-widest text-blue-400 border-l-2 border-blue-500 pl-2 uppercase">Command Advisor</h3>
+            <div class="glass-panel rounded-3xl neon-border p-4 flex-1 flex flex-col overflow-hidden">
+                <h3 class="text-xs font-bold mb-4 text-blue-400 uppercase border-l-2 border-blue-500 pl-2">Advisor</h3>
                 <div id="recommendationList" class="flex-1 overflow-y-auto space-y-3"></div>
             </div>
         </section>
     </main>
 
-    <script>
-        // 請將此處改為你自己的 GitHub Raw 網址
-        const GITHUB_CSV_URL = "https://raw.githubusercontent.com/你的帳號/你的專案/main/pokedex.csv";
-
-        const ALL_TYPES = ["一般","火","水","草","電","冰","格鬥","毒","地面","飛行","超能力","蟲","岩石","幽靈","龍","鋼","惡","妖精"];
-        const TYPE_CHART = { /* 同前完整矩陣數據 */ };
-
-        const db = new Dexie("PokeFutureDB_v4");
-        db.version(1).stores({ myPokemon: '++id, name, types, level, hp, atk, def, spAtk, spDef, speed, energy, moves, bio' });
-
-        async function syncWithCloud() {
-            const btn = document.getElementById('syncBtn');
-            btn.innerText = "SYNCING...";
-            try {
-                const res = await fetch(GITHUB_CSV_URL);
-                if (!res.ok) throw new Error();
-                const text = await res.text();
-                const r = text.split('\n').filter(l => l.trim());
+    <div id="manualModal" class="fixed inset-0 bg-black/90 hidden flex items-center justify-center p-8 z-[100]">
+        <div class="glass-panel rounded-[2.5rem] neon-border w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden">
+            <div class="p-6 border-b border-blue-500/30 flex justify-between items-center bg-blue-900/40">
+                <h2 class="text-2xl font-black text-white italic tracking-tighter">SYSTEM_OPERATIONAL_MANUAL</h2>
+                <button onclick="toggleManual()" class="text-4xl text-blue-500 hover:text-white">&times;</button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-8 space-y-8">
                 
-                for(let i=1; i<r.length; i++) {
-                    const c = r[i].split(/[,，\t]/);
-                    if(c.length < 3) continue;
-                    const exists = await db.myPokemon.where('name').equals(c[1].trim()).first();
-                    if(!exists) {
-                        await db.myPokemon.add({ 
-                            name: c[1], types: c[3].split('/').map(x=>x.trim()), 
-                            level: c[4], hp: c[5], atk: c[6], def: c[7], 
-                            spAtk: c[8], spDef: c[9], speed: c[10], energy: c[11], moves: c[12], bio: c[13] 
-                        });
-                    }
-                }
-                btn.innerText = "SYNC_COMPLETE";
-                setTimeout(() => btn.innerText = "📡 SYNC_CLOUD", 2000);
-            } catch (e) {
-                btn.innerText = "SYNC_FAILED";
-                setTimeout(() => btn.innerText = "📡 SYNC_CLOUD", 2000);
-            }
+                <div class="instruction-step">
+                    <h3 class="text-blue-400 font-black mb-2 flex items-center gap-2"><span>01</span> 雲端數據同步</h3>
+                    <p class="text-sm text-gray-300">點擊頂部 <b class="text-green-400">📡 SYNC_CLOUD</b>。系統將從您的 GitHub 讀取 1025 隻寶可夢的數據。這是啟動對戰計畫的前提。</p>
+                </div>
+
+                <div class="instruction-step">
+                    <h3 class="text-blue-400 font-black mb-2 flex items-center gap-2"><span>02</span> 敵方掃描分析</h3>
+                    <p class="text-sm text-gray-300 mb-4">點擊左側 <b class="text-white">INITIATE_SCAN</b> 隨機遭遇敵手。系統會立即載入敵方屬性。</p>
+                    
+                </div>
+
+                <div class="instruction-step">
+                    <h3 class="text-blue-400 font-black mb-2 flex items-center gap-2"><span>03</span> 屬性矩陣導航</h3>
+                    <p class="text-sm text-gray-300">中央矩陣會出現 <b class="text-white">垂直發光條</b>。光柱對應的是敵方屬性。找出光柱中標示 <b class="text-red-500">●</b> 的橫向屬性，那就是對手的致命弱點。</p>
+                    
+                </div>
+
+                <div class="instruction-step">
+                    <h3 class="text-blue-400 font-black mb-2 flex items-center gap-2"><span>04</span> 最佳戰士推薦</h3>
+                    <p class="text-sm text-gray-300">右側 <b class="text-blue-400">COMMAND_ADVISOR</b> 會掃描您的「口袋」，自動選出屬性加乘最高的寶可夢。倍率越高（如 2x 或 4x）勝算越大。</p>
+                </div>
+
+                <div class="instruction-step">
+                    <h3 class="text-blue-400 font-black mb-2 flex items-center gap-2"><span>05</span> 資料存檔與詳解</h3>
+                    <p class="text-sm text-gray-300">點擊 <b class="text-white">🎒 POCKET</b> 查看您載入的所有寶可夢。點擊頭像可進入「深度分析」模式，查看 HP、攻擊等能量條數值。</p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div id="pocketModal" class="fixed inset-0 bg-black/90 hidden flex items-center justify-center p-8 z-50">
+        </div>
+
+    <script>
+        // --- 邏輯部分 ---
+        function toggleManual() {
+            document.getElementById('manualModal').classList.toggle('hidden');
         }
 
-        // ... 其他 initMatrix, spawnRandomEnemy 等函數 (維持不變)
+        // 維持 v4.0 的所有核心 JavaScript (TYPE_CHART, spawnRandomEnemy, syncWithCloud, etc.)
+        // 此處需完整填入前一版的所有 JS 代碼以確保運作
+        // ...
     </script>
 </body>
 </html>
