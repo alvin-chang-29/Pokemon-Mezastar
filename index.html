@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>寶可夢對戰 v5.7 - 官方中文與符號修正</title>
+    <title>寶可夢對戰 v5.8 - Battle Final</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <style>
@@ -12,138 +12,147 @@
         .neon-border { border: 1px solid #3b82f6; box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
         .glass-panel { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(59, 130, 246, 0.4); }
         
-        /* 矩陣符號強制顯示 (黃框修正) */
-        #matrix table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        /* 矩陣符號穿透 (黃框修正) */
+        #matrix table { width: 100%; border-collapse: collapse; table-layout: fixed; position: relative; z-index: 10; }
         #matrix td, #matrix th { border: 1px solid rgba(59, 130, 246, 0.3); text-align: center; height: 35px; }
-        .eff-2 { color: #ff4444 !important; font-weight: 900; font-size: 16px; text-shadow: 0 0 5px #ff4444; } /* ● 圓形 */
-        .eff-05 { color: #3399ff !important; font-weight: 900; font-size: 16px; text-shadow: 0 0 5px #3399ff; } /* ▲ 三角形 */
-        .eff-0 { color: #ffffff !important; opacity: 0.5; font-size: 16px; } /* × */
+        .eff-symbol { position: relative; z-index: 50; font-weight: 900; font-size: 16px; pointer-events: none; }
+        .eff-2 { color: #ff4444; text-shadow: 0 0 8px #ff4444; }
+        .eff-05 { color: #3399ff; text-shadow: 0 0 8px #3399ff; }
 
-        /* 十字高亮 (十字定位) */
-        .highlight-atk { background-color: rgba(220, 38, 38, 0.4) !important; } /* 紅色攻擊橫帶 */
-        .highlight-def { background-color: rgba(30, 64, 175, 0.5) !important; } /* 藍色防禦直帶 */
-        .highlight-intersect { background-color: rgba(255, 255, 255, 0.2) !important; outline: 2px solid #fff; }
+        /* 十字高亮背景 (設為低層級) */
+        .highlight-atk { background-color: rgba(220, 38, 38, 0.25) !important; } 
+        .highlight-def { background-color: rgba(30, 64, 175, 0.3) !important; }
+        .highlight-intersect { background-color: rgba(255, 255, 255, 0.15) !important; outline: 2px solid rgba(255,255,255,0.5); }
 
-        .numpad-btn { @apply bg-blue-900/60 border border-blue-500/50 py-3 rounded-xl font-bold active:bg-blue-400 transition text-xl text-white; }
+        /* 數字鍵盤與精靈球 */
+        .numpad-btn { @apply bg-blue-900/40 border border-blue-500/50 py-2 rounded-lg font-bold text-white text-xl active:bg-blue-600; }
+        .pokeball-ok { 
+            width: 70px; height: 70px; background: linear-gradient(180deg, #ef4444 50%, #fff 50%); 
+            border: 4px solid #333; border-radius: 50%; position: relative; cursor: pointer;
+            transition: transform 0.2s; margin: 10px auto; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+        .pokeball-ok::after { content: ""; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 15px; height: 15px; background: white; border: 3px solid #333; border-radius: 50%; }
+        .pokeball-ok:active { transform: scale(0.9) rotate(20deg); }
     </style>
 </head>
 <body class="h-screen flex flex-col p-2">
 
-    <header class="p-3 glass-panel flex justify-between items-center border-b border-blue-500/50 mb-2">
-        <div class="flex items-center gap-3">
-            <button id="gearBtn" class="text-2xl cursor-pointer">⚙️</button>
-            <h1 class="text-xl font-black italic text-white uppercase tracking-tighter">寶可夢對戰 <span class="text-blue-500 text-xs">v5.7</span></h1>
+    <header class="p-2 glass-panel flex justify-between items-center border-b border-blue-500/50 mb-2">
+        <div class="flex items-center gap-2">
+            <button id="gearBtn" class="text-xl">⚙️</button>
+            <h1 class="text-lg font-black text-white italic tracking-tighter">寶可夢對戰 <span class="text-blue-500 text-xs">v5.8</span></h1>
         </div>
         <div class="flex gap-4 items-center text-[10px]">
-            <div class="text-gray-300">● 絕佳 | ▲ 不佳 | × 無效</div>
-            <button id="pocketBtn" class="neon-border px-6 py-2 rounded-full bg-blue-900/40 font-bold text-white hover:bg-blue-600 transition">🎒 我的寶可夢們</button>
+            <div class="text-gray-400">● 絕佳 | ▲ 不佳 | × 無效</div>
+            <button id="pocketBtn" class="neon-border px-4 py-1.5 rounded-full bg-blue-900/40 font-bold text-white text-xs">🎒 我的寶可夢們</button>
         </div>
     </header>
 
     <main class="flex-1 flex gap-2 overflow-hidden">
-        <section class="w-1/5 flex flex-col gap-2">
-            <div id="enemyPanel" class="glass-panel flex-1 rounded-2xl neon-border p-4 flex flex-col items-center justify-center text-center">
-                <img id="enemyImg" src="" class="w-40 h-40 object-contain drop-shadow-[0_0_20px_#3b82f6]">
+        <section id="leftSection" class="w-1/4 flex flex-col gap-2">
+            <div class="glass-panel flex-1 rounded-2xl neon-border p-4 flex flex-col items-center justify-center text-center">
+                <img id="enemyImg" src="" class="w-32 h-32 object-contain transition-all duration-500">
                 <div class="mt-4">
-                    <h2 id="enemyZh" class="text-3xl font-black text-white italic drop-shadow-lg">READY</h2> <p id="enemyEn" class="text-[12px] text-blue-400 uppercase font-bold mt-1">---</p>
+                    <h2 id="enemyZh" class="text-2xl font-black text-white italic">SCANNING...</h2> <p id="enemyEn" class="text-[10px] text-blue-400 uppercase font-bold">---</p>
                 </div>
-                <div id="enemyTypes" class="flex gap-2 mt-3"></div>
+                <div id="enemyTypes" class="flex gap-1 mt-2"></div>
             </div>
-            <button id="scanBtn" class="bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-xl shadow-lg transition active:scale-95">隨機選擇敵方</button>
+            <button id="scanBtn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl">隨機選擇敵方</button>
         </section>
 
-        <section class="flex-1 flex flex-col glass-panel rounded-2xl neon-border p-4 relative overflow-hidden">
-            <div class="text-center text-red-500 font-black text-xs mb-1">↖ 攻擊方 (X軸) ↘</div>
-            <div class="flex flex-1 overflow-hidden">
-                <div class="text-green-500 font-black text-xs [writing-mode:vertical-lr] flex items-center pr-1 border-r border-green-500/30">↖ 被攻擊方 (Y軸) ↘</div>
-                <div class="flex-1 overflow-auto bg-black/40 rounded-xl" id="matrix"></div>
+        <section id="midSection" class="flex-1 flex flex-col gap-2 overflow-hidden">
+            <div id="matrixContainer" class="glass-panel flex-1 rounded-2xl neon-border p-3 relative overflow-hidden">
+                <div class="text-center text-red-500 font-black text-[10px] mb-1">↖ 攻擊方 (X軸) ↘</div>
+                <div class="flex h-full overflow-hidden">
+                    <div class="text-green-500 font-black text-[10px] [writing-mode:vertical-lr] flex items-center pr-1">被攻擊方 (Y軸)</div>
+                    <div id="matrix" class="flex-1 overflow-auto bg-black/40 rounded-xl"></div>
+                </div>
+            </div>
+
+            <div id="mathBattle" class="glass-panel hidden flex-1 rounded-2xl neon-border p-4 flex flex-col items-center justify-center">
+                <div id="timerDisplay" class="text-red-500 font-black text-2xl mb-1 italic">60.0s</div>
+                <div id="quizText" class="text-4xl font-black text-white mb-2">---</div>
+                <div id="ansDisplay" class="text-3xl font-black text-blue-400 mb-4 bg-black/30 px-8 py-1 rounded-lg border border-blue-500/30">?</div>
+                <div class="grid grid-cols-3 gap-2 w-full max-w-[200px]">
+                    <button onclick="pressNum(1)" class="numpad-btn">1</button><button onclick="pressNum(2)" class="numpad-btn">2</button><button onclick="pressNum(3)" class="numpad-btn">3</button>
+                    <button onclick="pressNum(4)" class="numpad-btn">4</button><button onclick="pressNum(5)" class="numpad-btn">5</button><button onclick="pressNum(6)" class="numpad-btn">6</button>
+                    <button onclick="pressNum(7)" class="numpad-btn">7</button><button onclick="pressNum(8)" class="numpad-btn">8</button><button onclick="pressNum(9)" class="numpad-btn">9</button>
+                    <button onclick="pressNum('C')" class="numpad-btn text-red-400">C</button><button onclick="pressNum(0)" class="numpad-btn">0</button>
+                </div>
+                <div class="pokeball-ok" id="okBtn" onclick="checkAns()"></div>
             </div>
         </section>
 
-        <section class="w-1/3 flex flex-col gap-2">
-            <div class="glass-panel h-1/3 rounded-2xl neon-border p-3 flex flex-col overflow-hidden text-xs">
-                <h3 class="font-bold text-blue-400 border-l-2 border-blue-500 pl-2 mb-2 uppercase italic">分析建議</h3>
-                <div id="defendGroup" class="p-2 bg-blue-900/20 rounded border border-blue-500/20 mb-2">
-                    🛡️ <span class="text-gray-400">最佳防守:</span> <span id="defList" class="text-blue-300 ml-1">---</span>
-                </div>
-                <div id="attackGroup" class="p-2 bg-red-900/10 rounded border border-red-500/20">
-                    ⚔️ <span class="text-gray-400">最佳進攻:</span> <span id="atkList" class="text-red-300 ml-1">---</span>
-                </div>
+        <section id="rightSection" class="w-1/4 flex flex-col gap-2">
+            <div class="glass-panel flex-1 rounded-2xl neon-border p-4 flex flex-col items-center justify-center text-center">
+                <img id="myImg" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png" class="w-32 h-32 object-contain drop-shadow-[0_0_15px_gold]">
+                <h3 class="mt-4 text-xl font-black text-white italic" id="myActiveName">皮卡丘</h3>
             </div>
-
-            <div id="battleZone" class="glass-panel flex-1 rounded-2xl neon-border p-4 flex flex-col items-center justify-center relative">
-                <div id="mathQuiz" class="hidden w-full text-center">
-                    <div id="timerDisplay" class="text-red-500 font-black text-3xl mb-2 italic">20.0s</div>
-                    <div id="quizText" class="text-4xl font-black text-white mb-6">---</div>
-                    <input type="number" id="mathInput" readonly class="w-full bg-blue-900/60 border-2 border-blue-500 rounded p-2 text-center text-4xl text-white outline-none mb-4">
-                    <div class="grid grid-cols-3 gap-2 w-full max-w-xs mx-auto">
-                        <button onclick="pressNum(1)" class="numpad-btn">1</button>
-                        <button onclick="pressNum(2)" class="numpad-btn">2</button>
-                        <button onclick="pressNum(3)" class="numpad-btn">3</button>
-                        <button onclick="pressNum(4)" class="numpad-btn">4</button>
-                        <button onclick="pressNum(5)" class="numpad-btn">5</button>
-                        <button onclick="pressNum(6)" class="numpad-btn">6</button>
-                        <button onclick="pressNum(7)" class="numpad-btn">7</button>
-                        <button onclick="pressNum(8)" class="numpad-btn">8</button>
-                        <button onclick="pressNum(9)" class="numpad-btn">9</button>
-                        <button onclick="pressNum('C')" class="numpad-btn text-red-400">C</button>
-                        <button onclick="pressNum(0)" class="numpad-btn">0</button>
-                        <button onclick="checkAns()" class="numpad-btn text-green-400">OK</button>
-                    </div>
-                </div>
-                <div id="myPokeDisplay" class="text-center">
-                    <img id="myActiveImg" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png" class="w-32 h-32 mx-auto mb-4 drop-shadow-[0_0_15px_gold]">
-                    <button id="battleBtn" class="bg-yellow-500 text-blue-900 px-12 py-4 rounded-full font-black text-xl hover:bg-yellow-400 shadow-xl transition">開始對戰</button>
-                </div>
-            </div>
+            <button id="battleBtn" class="bg-yellow-500 text-blue-900 font-black py-4 rounded-xl text-xl shadow-xl">開始對戰</button>
         </section>
     </main>
 
     <script>
+        const TYPE_MAP = {"fire":"火","water":"水","grass":"草","electric":"電","ice":"冰","fighting":"格鬥","poison":"毒","ground":"地面","flying":"飛行","psychic":"超能力","bug":"蟲","rock":"岩石","ghost":"幽靈","dragon":"龍","dark":"惡","steel":"鋼","fairy":"妖精","normal":"一般"};
         const ALL_TYPES = ["一般","火","水","草","電","冰","格鬥","毒","地面","飛行","超能力","蟲","岩石","幽靈","龍","鋼","惡","妖精"];
-        const TYPE_CHART = { /* 完整屬性數據 */ };
+        const TYPE_CHART = { /* 完整屬性表... */ };
 
-        let config = { ko: 10, total: 20 };
-        let quizAns = 0;
-        let battleStartTime = 0;
-        let timerInterval = null;
+        let config = { ko: 20, total: 60 }; // 依您要求修改
+        let quizAns = 0, currentInput = "";
+        let startTime = 0, timer = null;
 
         window.onload = function() {
             initMatrix();
             document.getElementById('scanBtn').onclick = spawnRandomEnemy;
             document.getElementById('battleBtn').onclick = startBattle;
-            document.getElementById('gearBtn').onclick = () => document.getElementById('settingsModal').classList.remove('hidden');
             spawnRandomEnemy();
         };
 
         async function spawnRandomEnemy() {
+            const id = Math.floor(Math.random() * 1025) + 1;
+            const zhField = document.getElementById('enemyZh');
+            zhField.innerText = "讀取中...";
+            
             try {
-                const id = Math.floor(Math.random() * 1025) + 1;
                 const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
                 const data = await res.json();
                 const specRes = await fetch(data.species.url);
                 const specData = await specRes.json();
                 
-                // 官方中文名 (綠框修正)
+                // 台灣官方中文名修正
                 const zhName = specData.names.find(n => n.language.name === "zh-Hant")?.name || data.name;
-                
-                document.getElementById('enemyZh').innerText = zhName;
+                zhField.innerText = zhName; 
                 document.getElementById('enemyEn').innerText = data.name.toUpperCase();
                 document.getElementById('enemyImg').src = data.sprites.other["official-artwork"].front_default;
                 
-                const types = data.types.map(t => translateType(t.type.name));
-                document.getElementById('enemyTypes').innerHTML = types.map(t => `<span class="px-2 border border-blue-400 text-[10px] rounded text-blue-300 font-bold">${t}</span>`).join('');
-                
-                updateHighlight(types);
-            } catch(e) { console.error(e); }
+                const types = data.types.map(t => TYPE_MAP[t.type.name]);
+                updateMatrixHighlight(types);
+            } catch(e) { zhField.innerText = "連線異常"; }
         }
 
-        function updateHighlight(enemyTypes) {
+        function initMatrix() {
+            let h = `<table><thead><tr><th style="width:30px"></th>`;
+            ALL_TYPES.forEach(t => h += `<th>${t.slice(0,1)}</th>`);
+            h += `</tr></thead><tbody>`;
+            ALL_TYPES.forEach(row => {
+                h += `<tr class="row-${row}"><th>${row.slice(0,1)}</th>`;
+                ALL_TYPES.forEach(col => {
+                    const v = (TYPE_CHART[row] && TYPE_CHART[row][col]) || 1;
+                    let s = "";
+                    if(v === 2) s = '<span class="eff-symbol eff-2">●</span>';
+                    else if(v === 0.5) s = '<span class="eff-symbol eff-05">▲</span>';
+                    else if(v === 0) s = '<span class="eff-symbol eff-0">×</span>';
+                    h += `<td class="cell-${col}">${s}</td>`;
+                });
+                h += `</tr>`;
+            });
+            document.getElementById('matrix').innerHTML = h + `</tbody></table>`;
+        }
+
+        function updateMatrixHighlight(types) {
             document.querySelectorAll('td').forEach(el => el.classList.remove('highlight-atk', 'highlight-def', 'highlight-intersect'));
-            enemyTypes.forEach(t => {
-                // X軸橫向 (敵方為攻擊方)
+            types.forEach(t => {
                 document.querySelectorAll(`.row-${t} td`).forEach(el => el.classList.add('highlight-atk'));
-                // Y軸縱向 (敵方為被攻擊方)
                 document.querySelectorAll(`.cell-${t}`).forEach(el => {
                     el.classList.add('highlight-def');
                     if (el.parentNode.classList.contains(`row-${t}`)) el.classList.add('highlight-intersect');
@@ -151,29 +160,9 @@
             });
         }
 
-        function initMatrix() {
-            let h = `<table><thead><tr><th style="width:35px"></th>`;
-            ALL_TYPES.forEach(t => h += `<th>${t.slice(0,1)}</th>`);
-            h += `</tr></thead><tbody>`;
-            ALL_TYPES.forEach(row => {
-                h += `<tr class="row-${row}"><th>${row.slice(0,1)}</th>`;
-                ALL_TYPES.forEach(col => {
-                    const v = (TYPE_CHART[row] && TYPE_CHART[row][col]) || 1;
-                    let symbol = "";
-                    if (v === 2) symbol = '<span class="eff-2">●</span>';
-                    else if (v === 0.5) symbol = '<span class="eff-05">▲</span>';
-                    else if (v === 0) symbol = '<span class="eff-0">×</span>';
-                    h += `<td class="cell-${col}">${symbol}</td>`;
-                });
-                h += `</tr>`;
-            });
-            document.getElementById('matrix').innerHTML = h + `</tbody></table>`;
-        }
-
-        // 對戰畫面觸發 (紅框修正)
         function startBattle() {
-            document.getElementById('myPokeDisplay').classList.add('hidden');
-            document.getElementById('mathQuiz').classList.remove('hidden');
+            document.getElementById('matrixContainer').classList.add('hidden');
+            document.getElementById('mathBattle').classList.remove('hidden');
             newQuiz();
         }
 
@@ -183,32 +172,37 @@
             const op = Math.random() > 0.5 ? '+' : '-';
             quizAns = op === '+' ? a + b : a - b;
             document.getElementById('quizText').innerText = `${a} ${op} ${b} = ?`;
-            document.getElementById('mathInput').value = "";
-            battleStartTime = Date.now();
-            clearInterval(timerInterval);
-            timerInterval = setInterval(updateTimer, 100);
+            currentInput = "";
+            document.getElementById('ansDisplay').innerText = "?";
+            startTime = Date.now();
+            clearInterval(timer);
+            timer = setInterval(updateTimer, 100);
         }
 
         function updateTimer() {
-            let elapsed = (Date.now() - battleStartTime) / 1000;
-            let remain = Math.max(0, 20 - elapsed);
+            let elapsed = (Date.now() - startTime) / 1000;
+            let remain = Math.max(0, config.total - elapsed);
             document.getElementById('timerDisplay').innerText = `${remain.toFixed(1)}s`;
-            if (remain <= 0) { clearInterval(timerInterval); alert("逃走了..."); resetBattle(); }
+            if (remain <= 0) { clearInterval(timer); alert("逃走了！"); resetBattle(); }
         }
 
         function pressNum(n) {
-            const i = document.getElementById('mathInput');
-            if (n === 'C') i.value = ""; else i.value += n;
+            if(n === 'C') currentInput = ""; else currentInput += n;
+            document.getElementById('ansDisplay').innerText = currentInput || "?";
         }
 
-        function translateType(en) {
-            const m = {"fire":"火","water":"水","grass":"草","electric":"電","ice":"冰","fighting":"格鬥","poison":"毒","ground":"地面","flying":"飛行","psychic":"超能力","bug":"蟲","rock":"岩石","ghost":"幽靈","dragon":"龍","dark":"惡","steel":"鋼","fairy":"妖精","normal":"一般"};
-            return m[en] || "一般";
+        function checkAns() {
+            if (parseInt(currentInput) === quizAns) {
+                let timeSpent = (Date.now() - startTime) / 1000;
+                if (timeSpent <= config.ko) { alert("KO! 成功捕獲！"); resetBattle(); spawnRandomEnemy(); }
+                else if (timeSpent <= 40) { alert("HP 減半！再一題！"); newQuiz(); }
+                else { alert("答對了但太慢！再試一次！"); newQuiz(); }
+            } else { alert("錯誤！"); currentInput = ""; document.getElementById('ansDisplay').innerText = "?"; }
         }
 
         function resetBattle() {
-            document.getElementById('mathQuiz').classList.add('hidden');
-            document.getElementById('myPokeDisplay').classList.remove('hidden');
+            document.getElementById('mathBattle').classList.add('hidden');
+            document.getElementById('matrixContainer').classList.remove('hidden');
         }
     </script>
 </body>
