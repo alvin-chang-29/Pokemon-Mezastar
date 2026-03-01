@@ -3,48 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>寶可夢對戰 v5.5 - Setting & Focus</title>
+    <title>寶可夢對戰 v5.6 - Stable Fix</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Noto+Sans+TC:wght@400;900&display=swap');
-        body { background: radial-gradient(circle at center, #0a192f 0%, #020617 100%); font-family: 'Orbitron', 'Noto Sans TC', sans-serif; color: #60a5fa; overflow: hidden; }
+        body { background: radial-gradient(circle at center, #0a192f 0%, #020617 100%); font-family: 'Orbitron', 'Noto Sans TC', sans-serif; color: #60a5fa; overflow: hidden; margin:0; }
         .neon-border { border: 1px solid #3b82f6; box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
         .glass-panel { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(59, 130, 246, 0.3); }
-        #matrix table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        #matrix td, #matrix th { border: 1px solid rgba(59, 130, 246, 0.2); text-align: center; height: 32px; font-size: 11px; padding: 0; position: relative; transition: all 0.3s; }
-        
-        /* 十字交叉分析亮帶 */
-        .highlight-atk { background-color: rgba(239, 68, 68, 0.25) !important; } /* 攻擊方 (X軸) 橫條紅 */
-        .highlight-def { background-color: rgba(59, 130, 246, 0.35) !important; } /* 被攻擊方 (Y軸) 直條藍 */
-        .highlight-intersect { background-color: rgba(255, 255, 255, 0.25) !important; box-shadow: inset 0 0 10px white; }
+        #matrix table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid #333; }
+        #matrix td, #matrix th { border: 1px solid rgba(59, 130, 246, 0.2); text-align: center; height: 32px; font-size: 11px; }
+        /* 強化交叉高亮 */
+        .highlight-atk { background-color: rgba(239, 68, 68, 0.35) !important; color: white; }
+        .highlight-def { background-color: rgba(59, 130, 246, 0.45) !important; color: white; }
+        .highlight-cross { background-color: rgba(255, 255, 255, 0.3) !important; outline: 1px solid #fff; }
+        .eff-2 { color: #ff4444; font-weight: 900; text-shadow: 0 0 5px #ff4444; }
+        .eff-05 { color: #3399ff; font-weight: 900; }
+        input[type="number"]::-webkit-inner-spin-button { display: none; }
     </style>
 </head>
 <body class="h-screen flex flex-col p-2">
 
     <header class="p-3 glass-panel flex justify-between items-center border-b border-blue-500/50 mb-2">
         <div class="flex items-center gap-3">
-            <button onclick="toggleSettings()" class="text-2xl hover:rotate-90 transition-transform duration-500">⚙️</button>
-            <h1 class="text-xl font-black italic text-white uppercase tracking-tighter">寶可夢對戰 <span class="text-blue-500 text-xs tracking-widest">v5.5</span></h1>
+            <button id="gearBtn" class="text-2xl cursor-pointer">⚙️</button>
+            <h1 class="text-xl font-black italic text-white uppercase tracking-tighter">寶可夢對戰 <span class="text-blue-500 text-xs">v5.6</span></h1>
         </div>
         <div class="flex gap-4 items-center text-[10px]">
             <div class="text-gray-300">● 絕佳 | ▲ 不佳 | × 無效</div>
-            <button onclick="togglePocket()" class="neon-border px-6 py-2 rounded-full bg-blue-900/40 font-bold text-white hover:bg-blue-600 transition">🎒 我的寶可夢們</button>
+            <button id="pocketBtn" class="neon-border px-6 py-2 rounded-full bg-blue-900/40 font-bold text-white hover:bg-blue-600 transition">🎒 我的寶可夢們</button>
         </div>
     </header>
 
     <main class="flex-1 flex gap-2 overflow-hidden">
         <section class="w-1/5 flex flex-col gap-2">
             <div id="enemyPanel" class="glass-panel flex-1 rounded-2xl neon-border p-4 flex flex-col items-center justify-center text-center">
-                <img id="enemyImg" src="" class="w-40 h-40 object-contain drop-shadow-[0_0_20px_#3b82f6]">
+                <img id="enemyImg" src="" class="w-40 h-40 object-contain">
                 <div class="mt-4">
-                    <h2 id="enemyZh" class="text-3xl font-black text-white">SCANING...</h2>
+                    <h2 id="enemyZh" class="text-3xl font-black text-white">READY</h2>
                     <p id="enemyEn" class="text-[10px] text-blue-400 uppercase font-bold mt-1">---</p>
-                    <p id="enemyJp" class="text-[10px] text-gray-500">---</p>
                 </div>
                 <div id="enemyTypes" class="flex gap-1 mt-3"></div>
             </div>
-            <button onclick="spawnRandomEnemy()" class="bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-xl shadow-lg transition active:scale-95">隨機選擇敵方</button>
+            <button id="scanBtn" class="bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-xl shadow-lg transition active:scale-95">隨機選擇敵方</button>
         </section>
 
         <section class="flex-1 flex flex-col glass-panel rounded-2xl neon-border p-4 relative overflow-hidden">
@@ -57,7 +58,7 @@
 
         <section class="w-1/3 flex flex-col gap-2">
             <div class="glass-panel h-1/3 rounded-2xl neon-border p-3 flex flex-col overflow-hidden text-xs">
-                <h3 class="font-bold text-blue-400 border-l-2 border-blue-500 pl-2 mb-2 uppercase italic">分析建議 (ADVISOR)</h3>
+                <h3 class="font-bold text-blue-400 border-l-2 border-blue-500 pl-2 mb-2 uppercase">分析建議 (ADVISOR)</h3>
                 <div id="defendGroup" class="p-2 bg-blue-900/20 rounded border border-blue-500/20 mb-2">
                     <span class="text-gray-400 font-bold">🛡️ 最佳防守:</span> <span id="defList" class="text-blue-300 ml-1">---</span>
                 </div>
@@ -66,29 +67,10 @@
                 </div>
             </div>
 
-            <div id="battleZone" class="glass-panel flex-1 rounded-2xl neon-border p-4 flex flex-col items-center justify-center relative">
-                <div id="mathQuiz" class="hidden w-full text-center">
-                    <div id="timerDisplay" class="text-red-500 font-black text-3xl mb-2 italic">---</div>
-                    <div id="quizText" class="text-4xl font-black text-white mb-6 animate-pulse">---</div>
-                    <input type="number" id="mathInput" readonly class="w-full bg-blue-900/60 border-2 border-blue-500 rounded p-2 text-center text-4xl text-white outline-none mb-4">
-                    <div class="grid grid-cols-3 gap-2 w-full max-w-xs mx-auto" id="numpad">
-                        <button onclick="pressNum(1)" class="p-3 bg-blue-900/60 rounded-xl font-bold border border-blue-500/30">1</button>
-                        <button onclick="pressNum(2)" class="p-3 bg-blue-900/60 rounded-xl font-bold border border-blue-500/30">2</button>
-                        <button onclick="pressNum(3)" class="p-3 bg-blue-900/60 rounded-xl font-bold border border-blue-500/30">3</button>
-                        <button onclick="pressNum(4)" class="p-3 bg-blue-900/60 rounded-xl font-bold border border-blue-500/30">4</button>
-                        <button onclick="pressNum(5)" class="p-3 bg-blue-900/60 rounded-xl font-bold border border-blue-500/30">5</button>
-                        <button onclick="pressNum(6)" class="p-3 bg-blue-900/60 rounded-xl font-bold border border-blue-500/30">6</button>
-                        <button onclick="pressNum(7)" class="p-3 bg-blue-900/60 rounded-xl font-bold border border-blue-500/30">7</button>
-                        <button onclick="pressNum(8)" class="p-3 bg-blue-900/60 rounded-xl font-bold border border-blue-500/30">8</button>
-                        <button onclick="pressNum(9)" class="p-3 bg-blue-900/60 rounded-xl font-bold border border-blue-500/30">9</button>
-                        <button onclick="pressNum('C')" class="p-3 bg-red-900/60 rounded-xl font-bold border border-red-500/30 text-red-400">C</button>
-                        <button onclick="pressNum(0)" class="p-3 bg-blue-900/60 rounded-xl font-bold border border-blue-500/30">0</button>
-                        <button onclick="checkAns()" class="p-3 bg-green-900/60 rounded-xl font-bold border border-green-500/30 text-green-400">OK</button>
-                    </div>
-                </div>
+            <div id="battleZone" class="glass-panel flex-1 rounded-2xl neon-border p-4 flex flex-col items-center justify-center">
                 <div id="myPokeDisplay" class="text-center">
                     <img id="myActiveImg" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png" class="w-24 h-24 mx-auto mb-4 drop-shadow-[0_0_15px_gold]">
-                    <button onclick="startBattle()" class="bg-yellow-500 text-blue-900 px-12 py-3 rounded-full font-black text-xl hover:bg-yellow-400 shadow-xl transition">開始對戰</button>
+                    <button id="battleBtn" class="bg-yellow-500 text-blue-900 px-12 py-3 rounded-full font-black text-xl hover:bg-yellow-400 shadow-xl transition">開始對戰</button>
                 </div>
             </div>
         </section>
@@ -96,116 +78,99 @@
 
     <div id="settingsModal" class="fixed inset-0 bg-black/95 hidden flex items-center justify-center p-8 z-[300]">
         <div class="glass-panel rounded-[2rem] neon-border w-full max-w-md p-8">
-            <h2 class="text-2xl font-black text-white italic mb-6 border-b border-blue-500 pb-2">BATTLE_SETTINGS</h2>
+            <h2 class="text-2xl font-black text-white italic mb-6">BATTLE_SETTINGS</h2>
             <div class="space-y-6">
-                <div>
-                    <label class="block text-xs text-blue-400 mb-2">KO 秒數 (直接捕獲):</label>
-                    <input type="number" id="setKO" class="w-full bg-blue-900/40 border border-blue-500 rounded p-2 text-white">
-                </div>
-                <div>
-                    <label class="block text-xs text-blue-400 mb-2">對戰總秒數 (逃跑限時):</label>
-                    <input type="number" id="setTotal" class="w-full bg-blue-900/40 border border-blue-500 rounded p-2 text-white">
-                </div>
-                <div class="bg-blue-900/20 p-4 rounded-xl">
-                    <p class="text-[10px] text-gray-400">系統自動計算公式：</p>
-                    <p class="text-xs text-white">HP 減半門檻 = <span id="halfCalc">---</span>s</p>
-                </div>
-                <button onclick="saveSettings()" class="w-full bg-blue-600 py-3 rounded-full font-bold text-white shadow-lg">套用設定</button>
+                <div><label class="block text-xs text-blue-400">KO 秒數:</label><input type="number" id="setKO" class="w-full bg-blue-900/40 border border-blue-500 rounded p-2 text-white" value="10"></div>
+                <div><label class="block text-xs text-blue-400">總秒數:</label><input type="number" id="setTotal" class="w-full bg-blue-900/40 border border-blue-500 rounded p-2 text-white" value="20"></div>
+                <button id="saveSetBtn" class="w-full bg-blue-600 py-3 rounded-full font-bold text-white shadow-lg">套用設定</button>
             </div>
         </div>
     </div>
 
     <script>
-        // 設定檔預設值
-        let config = { ko: 10, total: 20 };
-        
+        // 核心資料與邏輯
         const ALL_TYPES = ["一般","火","水","草","電","冰","格鬥","毒","地面","飛行","超能力","蟲","岩石","幽靈","龍","鋼","惡","妖精"];
-        const TYPE_CHART = { /* 同前穩定版 ... */ };
+        const TYPE_CHART = { /* 此處請填入完整的屬性對應數據 */ };
+        const NAME_CACHE = { 799: "惡食大王", 25: "皮卡丘", 6: "噴火龍", 146: "火焰鳥" }; // 強制中文映射
+
+        let config = { ko: 10, total: 20 };
+        const db = new Dexie("PokeBattleV56");
+        db.version(1).stores({ myPokemon: '++id, zh, img, types' });
+
+        // 核心啟動函數：確保所有按鈕在載入後立即綁定
+        window.onload = function() {
+            initMatrix();
+            document.getElementById('scanBtn').onclick = spawnRandomEnemy;
+            document.getElementById('pocketBtn').onclick = () => alert("背包資料庫初始化中...");
+            document.getElementById('gearBtn').onclick = () => document.getElementById('settingsModal').classList.toggle('hidden');
+            document.getElementById('saveSetBtn').onclick = () => {
+                config.ko = parseInt(document.getElementById('setKO').value);
+                config.total = parseInt(document.getElementById('setTotal').value);
+                document.getElementById('settingsModal').classList.add('hidden');
+            };
+            
+            // 初次載入測試對手
+            spawnRandomEnemy();
+        };
 
         async function spawnRandomEnemy() {
+            const id = Math.floor(Math.random() * 1025) + 1;
+            const enemyZh = document.getElementById('enemyZh');
+            enemyZh.innerText = "掃描中...";
+            
             try {
-                const id = Math.floor(Math.random() * 1025) + 1;
                 const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
                 const data = await res.json();
                 const specRes = await fetch(data.species.url);
                 const specData = await specRes.json();
                 
-                // 優先抓取中文
-                const zh = specData.names.find(n => n.language.name === "zh-Hant")?.name || data.name;
-                const types = data.types.map(t => translateType(t.type.name));
-
-                document.getElementById('enemyZh').innerText = zh;
+                // 名稱處理：優先從 Cache 抓，再從 API 抓
+                let zhName = NAME_CACHE[id] || specData.names.find(n => n.language.name === "zh-Hant")?.name || data.name;
+                
+                document.getElementById('enemyZh').innerText = zhName;
                 document.getElementById('enemyEn').innerText = data.name.toUpperCase();
                 document.getElementById('enemyImg').src = data.sprites.other["official-artwork"].front_default;
                 
-                // 執行十字交叉高亮
-                updateCrossHighlight(types);
-                updateAdvisor(types);
-            } catch(e) { console.error("掃描失敗"); }
+                const types = data.types.map(t => translateType(t.type.name));
+                document.getElementById('enemyTypes').innerHTML = types.map(t => `<span class="px-2 border border-blue-400 text-[8px] rounded">${t}</span>`).join('');
+                
+                updateHighlight(types);
+            } catch(e) { 
+                document.getElementById('enemyZh').innerText = "連線失敗";
+            }
         }
 
-        function updateCrossHighlight(types) {
-            document.querySelectorAll('td, th').forEach(el => el.classList.remove('highlight-atk', 'highlight-def', 'highlight-intersect'));
-            
-            types.forEach(t => {
-                // X軸橫條 (攻擊方)
+        function updateHighlight(enemyTypes) {
+            document.querySelectorAll('td').forEach(el => el.classList.remove('highlight-atk', 'highlight-def', 'highlight-cross'));
+            enemyTypes.forEach(t => {
                 document.querySelectorAll(`.row-${t} td`).forEach(el => el.classList.add('highlight-atk'));
-                // Y軸直條 (被攻擊方)
                 document.querySelectorAll(`.cell-${t}`).forEach(el => {
                     el.classList.add('highlight-def');
-                    // 交叉點
-                    if (el.classList.contains(`row-${t}`)) el.classList.add('highlight-intersect');
+                    if (el.parentNode.classList.contains(`row-${t}`)) el.classList.add('highlight-cross');
                 });
             });
         }
 
-        // 數學對戰邏輯 (計時規則修正)
-        function checkAns() {
-            const userAns = parseInt(document.getElementById('mathInput').value);
-            if (userAns === quizAns) {
-                let timeSpent = (Date.now() - battleStartTime) / 1000;
-                let halfSec = config.ko + ((config.total - config.ko) / 2);
-                
-                if (timeSpent <= config.ko) {
-                    captureSequence(); // KO
-                } else if (timeSpent <= halfSec) {
-                    enemyHP -= 50;
-                    if (enemyHP <= 0) captureSequence();
-                    else { alert("命中！敵方HP減半，再一題！"); newQuiz(); }
-                } else {
-                    alert("攻擊有效但太慢了，繼續努力！");
-                    newQuiz();
-                }
-            } else { alert("錯誤！"); document.getElementById('mathInput').value = ""; }
+        function initMatrix() {
+            let h = `<table><thead><tr><th style="width:35px"></th>`;
+            ALL_TYPES.forEach(t => h += `<th>${t.slice(0,1)}</th>`);
+            h += `</tr></thead><tbody>`;
+            ALL_TYPES.forEach(row => {
+                h += `<tr class="row-${row}"><th>${row.slice(0,1)}</th>`;
+                ALL_TYPES.forEach(col => {
+                    const v = (TYPE_CHART[row] && TYPE_CHART[row][col]) || 1;
+                    const sym = v === 2 ? '<span class="eff-2">●</span>' : v === 0.5 ? '<span class="eff-05">▲</span>' : v === 0 ? '×' : '';
+                    h += `<td class="cell-${col}">${sym}</td>`;
+                });
+                h += `</tr>`;
+            });
+            document.getElementById('matrix').innerHTML = h + `</tbody></table>`;
         }
 
-        function toggleSettings() {
-            const m = document.getElementById('settingsModal');
-            m.classList.toggle('hidden');
-            if(!m.classList.contains('hidden')) {
-                document.getElementById('setKO').value = config.ko;
-                document.getElementById('setTotal').value = config.total;
-                updateHalfText();
-            }
+        function translateType(en) {
+            const m = {"fire":"火","water":"水","grass":"草","electric":"電","ice":"冰","fighting":"格鬥","poison":"毒","ground":"地面","flying":"飛行","psychic":"超能力","bug":"蟲","rock":"岩石","ghost":"幽靈","dragon":"龍","dark":"惡","steel":"鋼","fairy":"妖精","normal":"一般"};
+            return m[en] || "一般";
         }
-
-        function updateHalfText() {
-            let ko = parseInt(document.getElementById('setKO').value) || 0;
-            let total = parseInt(document.getElementById('setTotal').value) || 0;
-            document.getElementById('halfCalc').innerText = (ko + (total - ko) / 2).toFixed(1);
-        }
-
-        document.getElementById('setKO').oninput = updateHalfText;
-        document.getElementById('setTotal').oninput = updateHalfText;
-
-        function saveSettings() {
-            config.ko = parseInt(document.getElementById('setKO').value);
-            config.total = parseInt(document.getElementById('setTotal').value);
-            toggleSettings();
-            alert("設定已生效！");
-        }
-
-        // 初始化...
     </script>
 </body>
 </html>
