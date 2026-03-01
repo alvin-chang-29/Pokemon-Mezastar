@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>寶可夢對戰 v5.9 - 終極捕獲版</title>
+    <title>寶可夢對戰 v6.0 - 視覺動態優化版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <style>
@@ -11,34 +11,35 @@
         body { background: radial-gradient(circle at center, #0a192f 0%, #020617 100%); font-family: 'Orbitron', 'Noto Sans TC', sans-serif; color: #60a5fa; overflow: hidden; margin:0; }
         .glass-panel { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(59, 130, 246, 0.4); }
         
-        /* 符號強制顯示邏輯 */
-        #matrix table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        /* 符號色彩強化 (紅色圓/藍色三角) */
         #matrix td { position: relative; height: 32px; border: 1px solid rgba(59, 130, 246, 0.2); }
-        .eff-symbol { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 50; font-weight: 900; font-size: 18px; pointer-events: none; }
-        .eff-2 { color: #ff4444; text-shadow: 0 0 8px #ff4444; }
-        .eff-05 { color: #3399ff; text-shadow: 0 0 8px #3399ff; }
+        .eff-symbol { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 100; font-weight: 900; font-size: 20px; pointer-events: none; }
+        .eff-2 { color: #ff3333; text-shadow: 0 0 10px #ff0000; } /* 紅色圓形 */
+        .eff-05 { color: #3399ff; text-shadow: 0 0 10px #0066ff; } /* 藍色三角形 */
 
-        /* 高亮層級調低 */
-        .highlight-atk { background-color: rgba(220, 38, 38, 0.3) !important; }
-        .highlight-def { background-color: rgba(30, 64, 175, 0.35) !important; }
-        .highlight-intersect { background-color: rgba(255, 255, 255, 0.15) !important; outline: 1px solid #fff; }
+        /* 亮帶層級調低 */
+        .highlight-atk { background-color: rgba(220, 38, 38, 0.25) !important; }
+        .highlight-def { background-color: rgba(30, 64, 175, 0.3) !important; }
 
-        /* 精靈球按鈕 */
+        /* 捕獲畫面 (中央發光) */
+        .modal-full { fixed inset-0 flex flex-col items-center justify-center z-[500] bg-black/90; }
+        .capture-glow { filter: drop-shadow(0 0 25px rgba(250, 204, 21, 0.8)); animation: pulseGlow 2s infinite; }
+        @keyframes pulseGlow { 0%, 100% { filter: drop-shadow(0 0 15px rgba(250, 204, 21, 0.6)); } 50% { filter: drop-shadow(0 0 35px rgba(250, 204, 21, 1)); } }
+        
+        /* 逃跑動畫 (左至右慢速 30%) */
+        .escape-slide-right { animation: escapeRight 2.6s linear forwards; }
+        @keyframes escapeRight { 
+            0% { transform: translateX(-150vw); opacity: 1; }
+            100% { transform: translateX(150vw); opacity: 0; }
+        }
+
+        /* 精靈球 OK 鍵 */
         .pokeball-ok { 
             width: 80px; height: 80px; background: linear-gradient(180deg, #ef4444 50%, #fff 50%); 
             border: 4px solid #333; border-radius: 50%; position: relative; cursor: pointer;
             margin: 15px auto; transition: transform 0.2s; box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
-        .pokeball-ok::before { content: ""; position: absolute; top: 50%; left: 0; width: 100%; height: 4px; background: #333; transform: translateY(-50%); }
-        .pokeball-ok::after { content: ""; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 20px; height: 20px; background: white; border: 4px solid #333; border-radius: 50%; }
-        .pokeball-ok:active { transform: scale(0.9) rotate(20deg); }
-
-        /* 動態畫面 */
-        .modal-full { @apply fixed inset-0 flex flex-col items-center justify-center z-[200] bg-black/90 transition-opacity duration-500; }
-        .capture-bounce { animation: bounce 0.8s infinite; }
-        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-30px); } }
-        .escape-slide { animation: escape 1s forwards; }
-        @keyframes escape { to { transform: translateX(-200%); opacity: 0; } }
+        .pokeball-ok::after { content: ""; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 18px; height: 18px; background: white; border: 4px solid #333; border-radius: 50%; }
     </style>
 </head>
 <body class="h-screen flex flex-col p-2">
@@ -46,108 +47,86 @@
     <header class="p-2 glass-panel flex justify-between items-center border-b border-blue-500/50 mb-2">
         <div class="flex items-center gap-2">
             <button onclick="toggleSettings()" class="text-xl">⚙️</button>
-            <h1 class="text-lg font-black text-white italic">寶可夢對戰 <span class="text-blue-500 text-xs">v5.9</span></h1>
+            <h1 class="text-lg font-black text-white italic tracking-tighter uppercase">寶可夢對戰 <span class="text-blue-500 text-xs">v6.0</span></h1>
         </div>
-        <div class="text-[10px] text-gray-400">● 絕佳 | ▲ 不佳 | × 無效</div>
         <button onclick="togglePocket()" class="neon-border px-4 py-1.5 rounded-full bg-blue-900/40 text-xs text-white">🎒 我的寶可夢們</button>
     </header>
 
     <main class="flex-1 flex gap-2 overflow-hidden">
-        <section id="enemySection" class="w-1/4 flex flex-col gap-2">
+        <section class="w-1/4 flex flex-col gap-2">
             <div id="enemyPanel" class="glass-panel flex-1 rounded-2xl neon-border p-4 flex flex-col items-center justify-center text-center">
                 <img id="enemyImg" src="" class="w-32 h-32 object-contain">
                 <div class="mt-4">
-                    <h2 id="enemyZh" class="text-2xl font-black text-white italic">讀取中...</h2>
+                    <h2 id="enemyZh" class="text-2xl font-black text-white italic">---</h2>
                     <p id="enemyEn" class="text-[10px] text-blue-400 uppercase font-bold">---</p>
-                    <p id="enemyJp" class="text-[10px] text-gray-500">---</p>
                 </div>
                 <div id="enemyTypes" class="flex gap-1 mt-2"></div>
             </div>
-            <button onclick="spawnRandomEnemy()" class="bg-blue-600 text-white font-bold py-3 rounded-xl">隨機選擇敵方</button>
+            <button onclick="spawnRandomEnemy()" class="bg-blue-600 text-white font-bold py-3 rounded-xl active:scale-95 transition">隨機選擇敵方</button>
         </section>
 
         <section class="flex-1 flex flex-col gap-2">
             <div id="matrixContainer" class="glass-panel flex-1 rounded-2xl neon-border p-3 relative overflow-hidden">
-                <div class="text-center text-red-500 font-black text-[10px]">↖ 攻擊方 (X軸) ↘</div>
-                <div id="matrix" class="mt-2 bg-black/40 rounded-xl overflow-auto h-[90%]"></div>
+                <div class="text-center text-[10px] text-gray-500 mb-1 italic">● 絕佳(紅) | ▲ 不佳(藍) | × 無效</div>
+                <div id="matrix" class="bg-black/40 rounded-xl overflow-auto h-[90%]"></div>
             </div>
 
             <div id="mathBattle" class="glass-panel hidden flex-1 rounded-2xl neon-border p-4 flex flex-col items-center justify-center">
                 <div id="timerDisplay" class="text-red-500 font-black text-3xl mb-1">60.0s</div>
-                <div id="quizText" class="text-4xl font-black text-white mb-2">25 + 7 = ?</div>
+                <div id="quizText" class="text-4xl font-black text-white mb-2">---</div>
                 <div id="ansDisplay" class="text-4xl font-black text-blue-400 mb-4 bg-black/40 px-10 py-2 rounded-lg border border-blue-500/50">?</div>
                 <div class="grid grid-cols-3 gap-2 w-full max-w-[210px]">
-                    <button onclick="pressNum(1)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white text-xl">1</button>
-                    <button onclick="pressNum(2)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white text-xl">2</button>
-                    <button onclick="pressNum(3)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white text-xl">3</button>
-                    <button onclick="pressNum(4)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white text-xl">4</button>
-                    <button onclick="pressNum(5)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white text-xl">5</button>
-                    <button onclick="pressNum(6)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white text-xl">6</button>
-                    <button onclick="pressNum(7)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white text-xl">7</button>
-                    <button onclick="pressNum(8)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white text-xl">8</button>
-                    <button onclick="pressNum(9)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white text-xl">9</button>
-                    <button onclick="pressNum('C')" class="bg-red-900/50 py-3 rounded-lg font-bold text-red-400 text-xl">C</button>
-                    <button onclick="pressNum(0)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white text-xl">0</button>
+                    <button onclick="pressNum(1)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white">1</button>
+                    <button onclick="pressNum(2)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white">2</button>
+                    <button onclick="pressNum(3)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white">3</button>
+                    <button onclick="pressNum(4)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white">4</button>
+                    <button onclick="pressNum(5)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white">5</button>
+                    <button onclick="pressNum(6)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white">6</button>
+                    <button onclick="pressNum(7)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white">7</button>
+                    <button onclick="pressNum(8)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white">8</button>
+                    <button onclick="pressNum(9)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white">9</button>
+                    <button onclick="pressNum('C')" class="bg-red-900/50 py-3 rounded-lg font-bold text-red-400">C</button>
+                    <button onclick="pressNum(0)" class="bg-blue-900/50 py-3 rounded-lg font-bold text-white">0</button>
                     <div class="pokeball-ok" onclick="checkAns()"></div>
                 </div>
             </div>
         </section>
 
         <section class="w-1/4 flex flex-col gap-2">
-            <div class="glass-panel flex-1 rounded-2xl neon-border p-4 flex flex-col items-center justify-center text-center">
+            <div class="glass-panel flex-1 rounded-2xl neon-border p-4 flex flex-col items-center justify-center">
                 <img id="myImg" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png" class="w-32 h-32 object-contain drop-shadow-[0_0_15px_gold]">
                 <h3 id="myActiveName" class="mt-4 text-xl font-black text-white italic">皮卡丘</h3>
             </div>
-            <button onclick="startBattle()" class="bg-yellow-500 text-blue-900 font-black py-4 rounded-xl text-xl shadow-xl">開始對戰</button>
+            <button onclick="startBattle()" class="bg-yellow-500 text-blue-900 font-black py-4 rounded-xl text-xl shadow-xl active:scale-95 transition">開始對戰</button>
         </section>
     </main>
 
-    <div id="captureModal" class="modal-full hidden">
-        <img id="capturedImg" src="" class="w-64 h-64 capture-bounce">
-        <h2 class="text-4xl font-black text-yellow-400 mt-8 italic">捕獲寶可夢！</h2>
-        <button onclick="closeModals()" class="mt-10 bg-blue-600 px-12 py-3 rounded-full text-white font-bold">確認</button>
+    <div id="captureModal" class="fixed inset-0 bg-black/95 hidden flex flex-col items-center justify-center z-[500]">
+        <div class="text-center">
+            <img id="capturedImg" src="" class="w-72 h-72 mx-auto capture-glow">
+            <h2 class="text-5xl font-black text-yellow-400 mt-10 italic tracking-widest drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">捕獲寶可夢！</h2>
+            <button onclick="closeModals()" class="mt-12 bg-blue-600 px-16 py-4 rounded-full text-white font-black text-xl hover:bg-blue-500">收回背包</button>
+        </div>
     </div>
 
-    <div id="escapeModal" class="modal-full hidden">
-        <h2 class="text-4xl font-black text-red-500 mb-8 italic">寶可夢逃走了...</h2>
-        <img id="escapingImg" src="" class="w-48 h-48 escape-slide">
-        <button onclick="closeModals()" class="mt-10 bg-gray-700 px-12 py-3 rounded-full text-white font-bold text-sm">繼續冒險</button>
+    <div id="escapeModal" class="fixed inset-0 bg-black/95 hidden overflow-hidden z-[500]">
+        <div class="h-full w-full flex flex-col items-center justify-center relative">
+            <h2 class="text-4xl font-black text-red-500 mb-12 italic z-10">寶可夢逃走了...</h2>
+            <img id="escapingImg" src="" class="w-56 h-56 escape-slide-right absolute top-1/2 -translate-y-1/2">
+            <button onclick="closeModals()" class="mt-24 bg-gray-700 px-12 py-3 rounded-full text-white font-bold z-10">關閉系統</button>
+        </div>
     </div>
 
     <script>
-        // 核心邏輯 v5.9
         const TYPE_MAP = {"fire":"火","water":"水","grass":"草","electric":"電","ice":"冰","fighting":"格鬥","poison":"毒","ground":"地面","flying":"飛行","psychic":"超能力","bug":"蟲","rock":"岩石","ghost":"幽靈","dragon":"龍","dark":"惡","steel":"鋼","fairy":"妖精","normal":"一般"};
         const ALL_TYPES = ["一般","火","水","草","電","冰","格鬥","毒","地面","飛行","超能力","蟲","岩石","幽靈","龍","鋼","惡","妖精"];
-        const TYPE_CHART = { /* 數據矩陣邏輯維持 v5.8 */ };
+        const TYPE_CHART = { /* 數據邏輯維持 v5.9 */ };
 
         let config = { ko: 20, total: 60 };
         let quizAns = 0, currentInput = "", timer = null, startTime = 0;
         let currentEnemy = null;
 
         window.onload = () => { initMatrix(); spawnRandomEnemy(); };
-
-        async function spawnRandomEnemy() {
-            const id = Math.floor(Math.random() * 1025) + 1;
-            try {
-                const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
-                const data = await res.json();
-                const specRes = await fetch(data.species.url);
-                const specData = await specRes.json();
-                
-                const zhName = specData.names.find(n => n.language.name === "zh-Hant")?.name || data.name;
-                const jpName = specData.names.find(n => n.language.name === "ja")?.name || "";
-                
-                currentEnemy = { id, zh: zhName, en: data.name, img: data.sprites.other["official-artwork"].front_default };
-                
-                document.getElementById('enemyZh').innerText = zhName;
-                document.getElementById('enemyEn').innerText = data.name.toUpperCase();
-                document.getElementById('enemyJp').innerText = `${jpName} (${data.name})`;
-                document.getElementById('enemyImg').src = currentEnemy.img;
-                
-                const types = data.types.map(t => TYPE_MAP[t.type.name]);
-                updateMatrixHighlight(types);
-            } catch(e) { console.error(e); }
-        }
 
         function initMatrix() {
             let h = `<table><thead><tr><th style="width:30px"></th>`;
@@ -168,14 +147,28 @@
             document.getElementById('matrix').innerHTML = h + `</tbody></table>`;
         }
 
+        async function spawnRandomEnemy() {
+            const id = Math.floor(Math.random() * 1025) + 1;
+            try {
+                const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
+                const data = await res.json();
+                const specRes = await fetch(data.species.url);
+                const specData = await specRes.json();
+                const zhName = specData.names.find(n => n.language.name === "zh-Hant")?.name || data.name;
+                
+                currentEnemy = { zh: zhName, en: data.name, img: data.sprites.other["official-artwork"].front_default };
+                document.getElementById('enemyZh').innerText = zhName;
+                document.getElementById('enemyEn').innerText = data.name.toUpperCase();
+                document.getElementById('enemyImg').src = currentEnemy.img;
+                updateMatrixHighlight(data.types.map(t => TYPE_MAP[t.type.name]));
+            } catch(e) { console.error(e); }
+        }
+
         function updateMatrixHighlight(types) {
-            document.querySelectorAll('td').forEach(el => el.classList.remove('highlight-atk', 'highlight-def', 'highlight-intersect'));
+            document.querySelectorAll('td').forEach(el => el.classList.remove('highlight-atk', 'highlight-def'));
             types.forEach(t => {
                 document.querySelectorAll(`.row-${t} td`).forEach(el => el.classList.add('highlight-atk'));
-                document.querySelectorAll(`.cell-${t}`).forEach(el => {
-                    el.classList.add('highlight-def');
-                    if (el.parentNode.classList.contains(`row-${t}`)) el.classList.add('highlight-intersect');
-                });
+                document.querySelectorAll(`.cell-${t}`).forEach(el => el.classList.add('highlight-def'));
             });
         }
 
@@ -190,33 +183,30 @@
                 let timeSpent = (Date.now() - startTime) / 1000;
                 clearInterval(timer);
                 if (timeSpent <= config.ko) {
-                    showCapture();
-                } else {
-                    alert("攻擊成功！再一題！"); newQuiz();
-                }
-            } else {
-                alert("錯誤！"); currentInput = ""; document.getElementById('ansDisplay').innerText = "?";
-            }
-        }
-
-        function showCapture() {
-            document.getElementById('capturedImg').src = currentEnemy.img;
-            document.getElementById('captureModal').classList.remove('hidden');
+                    document.getElementById('capturedImg').src = currentEnemy.img;
+                    document.getElementById('captureModal').classList.remove('hidden');
+                } else { alert("答對了！但還要繼續削弱對手體力！"); newQuiz(); }
+            } else { alert("錯誤！"); currentInput = ""; document.getElementById('ansDisplay').innerText = "?"; }
         }
 
         function enemyEscape() {
             document.getElementById('escapingImg').src = currentEnemy.img;
             document.getElementById('escapeModal').classList.remove('hidden');
+            // 重新啟動動畫以確保從左側開始
+            const img = document.getElementById('escapingImg');
+            img.classList.remove('escape-slide-right');
+            void img.offsetWidth; // 觸發重繪
+            img.classList.add('escape-slide-right');
         }
 
         function closeModals() {
-            document.querySelectorAll('.modal-full').forEach(m => m.classList.add('hidden'));
+            document.getElementById('captureModal').classList.add('hidden');
+            document.getElementById('escapeModal').classList.add('hidden');
             document.getElementById('mathBattle').classList.add('hidden');
             document.getElementById('matrixContainer').classList.remove('hidden');
             spawnRandomEnemy();
         }
 
-        // 其餘輔助函數 (pressNum, updateTimer, newQuiz) 同 v5.8 邏輯
         function pressNum(n) {
             if(n === 'C') currentInput = ""; else currentInput += n;
             document.getElementById('ansDisplay').innerText = currentInput || "?";
