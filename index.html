@@ -2,138 +2,160 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>對戰第一關：方塊定位 - 模組 v3.3</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>寶可夢乘法對戰 PWA</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .block-unit {
-            width: 30px; height: 30px;
-            margin: 2px; border-radius: 4px;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            transform: scale(0);
+        @keyframes strong-shake {
+            0%, 100% { transform: translate(0,0) rotate(0deg); }
+            20% { transform: translate(-8px, 5px) rotate(-3deg); }
+            60% { transform: translate(8px, -5px) rotate(3deg); }
         }
+        @keyframes aura-red { from { filter: drop-shadow(0 0 10px red); } to { filter: drop-shadow(0 0 30px red); } }
+        @keyframes aura-blue { from { filter: drop-shadow(0 0 10px cyan); } to { filter: drop-shadow(0 0 30px cyan); } }
+        
+        .battling-enemy { animation: strong-shake 0.15s infinite, aura-red 0.8s infinite alternate; }
+        .battling-player { animation: strong-shake 0.15s infinite, aura-blue 0.8s infinite alternate; }
+        .escape-anim { transition: transform 4s linear; transform: translateX(120vw) rotate(20deg) !important; }
+        
+        .block-unit { width: 35px; height: 35px; margin: 2px; border-radius: 6px; transform: scale(0); transition: 0.3s; }
         .block-show { transform: scale(1); }
-        .bg-yellow-block { background-color: #facc15; box-shadow: 0 0 10px #facc15; }
-        .bg-green-block { background-color: #22c55e; box-shadow: 0 0 10px #22c55e; }
-        .bg-red-target { background-color: #ef4444; animation: pulse-red 0.5s infinite alternate; }
         
-        @keyframes pulse-red { from { transform: scale(1); } to { transform: scale(1.2); } }
-        
-        .flash-num { animation: flash 0.8s infinite alternate; border-width: 4px !important; }
-        @keyframes flash { from { opacity: 0.3; } to { opacity: 1; } }
+        .pokeball-shake { animation: strong-shake 0.2s infinite; }
     </style>
 </head>
-<body class="bg-slate-950 text-white flex flex-col items-center justify-center min-h-screen">
+<body class="bg-slate-950 text-white min-h-screen flex flex-col items-center p-4">
 
-    <div class="mb-6 text-center">
-        <h2 class="text-xl text-blue-400 font-bold mb-4">第一關：方塊陣型定位</h2>
-        <div class="flex items-center gap-4 text-5xl font-black bg-slate-900 p-6 rounded-3xl border-2 border-slate-800">
-            <span id="qA" class="text-yellow-400 px-4 py-2 border-2 border-transparent">3</span>
-            <span class="text-white">×</span>
-            <span id="qB" class="text-green-400 px-4 py-2 border-2 border-transparent">2</span>
-            <span>=</span>
-            <span id="qResult" class="text-red-500">?</span>
+    <div class="w-full max-w-6xl flex justify-between items-center mb-6 bg-black/50 p-6 rounded-2xl border-2 border-slate-800">
+        <div class="text-2xl font-black text-yellow-400">STAGE: <span id="stage-name">第一關：方塊陣型</span></div>
+        <div class="text-4xl font-mono text-red-500">TIME: <span id="timer">00</span>s</div>
+    </div>
+
+    <div class="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-3 gap-8 items-center bg-slate-900 p-10 rounded-[3rem] shadow-2xl relative overflow-hidden">
+        
+        <div class="flex flex-col items-center">
+            <div id="enemy" class="w-72 h-72 bg-contain bg-no-repeat bg-center" style="background-image: url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/150.png');"></div>
+            <div class="w-full bg-gray-800 h-6 rounded-full mt-4 overflow-hidden border-2 border-white">
+                <div id="hp-bar" class="bg-green-500 h-full w-full transition-all duration-1000"></div>
+            </div>
+        </div>
+
+        <div class="flex flex-col items-center min-h-[500px] justify-center border-x border-slate-800 px-6">
+            <div id="math-header" class="text-5xl font-black mb-8 flex gap-4">
+                <span id="dispA" class="text-yellow-400 border-b-4 border-yellow-400">3</span>
+                <span>×</span>
+                <span id="dispB" class="text-green-400 border-b-4 border-green-400">2</span>
+                <span>=</span>
+                <span id="dispRes" class="text-red-500">?</span>
+            </div>
+
+            <div id="matrix-box" class="relative">
+                <div id="grid" class="grid grid-cols-10 gap-2 bg-black/30 p-4 rounded-xl"></div>
+                <div id="block-layer" class="absolute top-[68px] left-[68px] pointer-events-none"></div>
+            </div>
+
+            <div id="calc-box" class="hidden w-full flex flex-col items-center">
+                <div id="ans-display" class="text-7xl font-mono mb-6 text-green-400 bg-black w-full text-center py-4 rounded-2xl border-4 border-slate-700">?</div>
+                <div class="grid grid-cols-3 gap-3 w-full">
+                    </div>
+            </div>
+
+            <div id="catch-box" class="hidden flex flex-col items-center">
+                <div id="ball" class="w-32 h-32 bg-contain bg-no-repeat bg-center mb-4 pokeball-shake" style="background-image:url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png')"></div>
+                <p class="text-2xl font-bold text-yellow-400">收服中...</p>
+            </div>
+        </div>
+
+        <div class="flex flex-col items-center">
+            <div id="player" class="w-72 h-72 bg-contain bg-no-repeat bg-center" style="background-image: url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png'); transform: scaleX(-1);"></div>
+            <div class="text-blue-400 font-black text-xl mt-4">皮卡丘</div>
         </div>
     </div>
 
-    <div class="relative bg-slate-900 p-10 rounded-[2rem] shadow-2xl">
-        <div id="grid-ui" class="grid grid-cols-10 gap-3">
-            </div>
-        
-        <div id="block-layer" class="absolute top-[115px] left-[115px] pointer-events-none">
-            </div>
-    </div>
-
     <script>
-        const valA = 3; // 被乘數
-        const valB = 2; // 乘數
-        let progress = 0; // 0:待點黃, 1:待點綠, 2:待點紅
+        let a = 3, b = 2, time = 0, step = 0, currentInput = "";
+        let timerInt;
 
-        function init() {
-            const grid = document.getElementById('grid-ui');
-            for (let r = 0; r <= 9; r++) {
-                for (let c = 0; c <= 9; c++) {
-                    const btn = document.createElement('div');
-                    btn.className = "w-12 h-12 flex items-center justify-center font-bold text-xl rounded-xl border-2 border-slate-800 transition-all";
-                    
-                    if (r === 0 && c === 0) { btn.innerText = "×"; }
-                    else if (c === 0 && r > 0) {
-                        btn.innerText = r;
-                        btn.id = `row-${r}`;
-                        btn.className += " text-yellow-400 cursor-pointer";
-                        if (r === valA) btn.classList.add('flash-num', 'border-yellow-400');
-                        btn.onclick = () => clickRow(r);
-                    } else if (r === 0 && c > 0) {
-                        btn.innerText = c;
-                        btn.id = `col-${c}`;
-                        btn.className += " text-green-400 opacity-20";
-                        btn.onclick = () => clickCol(c);
-                    } else {
-                        btn.id = `cell-${r}-${c}`;
-                        btn.className += " opacity-10 text-xs";
-                        btn.innerText = r * c;
-                    }
-                    grid.appendChild(btn);
+        function start() {
+            timerInt = setInterval(() => {
+                time++;
+                document.getElementById('timer').innerText = time;
+                if(time === 40) document.getElementById('hp-bar').style.width = "50%"; // HP 減半
+                if(time >= 60) { // 逃跑
+                    clearInterval(timerInt);
+                    document.getElementById('enemy').classList.add('escape-anim');
+                    alert("寶可夢逃走了！");
+                }
+            }, 1000);
+            document.getElementById('enemy').classList.add('battling-enemy');
+            document.getElementById('player').classList.add('battling-player');
+            initGrid();
+        }
+
+        function initGrid() {
+            const grid = document.getElementById('grid');
+            for(let r=0; r<=9; r++){
+                for(let c=0; c<=9; c++){
+                    const d = document.createElement('div');
+                    d.className = "w-10 h-10 flex items-center justify-center font-bold border border-slate-800 rounded cursor-pointer";
+                    if(r===0 && c===0) d.innerText = "×";
+                    else if(c===0) { d.innerText=r; d.className+=" text-yellow-400"; if(r===a) d.classList.add('bg-yellow-900/50'); d.onclick=()=>clickA(r); }
+                    else if(r===0) { d.innerText=c; d.className+=" text-green-400"; d.onclick=()=>clickB(c); }
+                    else { d.innerText=r*c; d.className+=" text-transparent"; d.id=`c-${r}-${c}`; d.onclick=()=>clickRes(r,c); }
+                    grid.appendChild(d);
                 }
             }
         }
 
-        function clickRow(r) {
-            if (progress === 0 && r === valA) {
-                progress = 1;
-                document.getElementById(`row-${r}`).classList.remove('flash-num');
-                document.getElementById(`col-${valB}`).classList.remove('opacity-20');
-                document.getElementById(`col-${valB}`).classList.add('flash-num', 'border-green-400');
-                // 畫出第一排黃色方塊
-                showBlocks('yellow');
-            }
+        function clickA(r){ if(step===0 && r===a) { step=1; showBlocks('y'); }}
+        function clickB(c){ if(step===1 && c===b) { step=2; showBlocks('g'); document.getElementById(`c-${a}-${b}`).classList.add('bg-red-600','!text-white'); }}
+        function clickRes(r,c){ if(step===2 && r===a && c===b) { 
+            document.getElementById('matrix-box').classList.add('hidden');
+            document.getElementById('calc-box').classList.remove('hidden');
+            document.getElementById('stage-name').innerText = "第二關：計算捕獲";
+            initKeypad();
+        }}
+
+        function showBlocks(type) {
+            const layer = document.getElementById('block-layer');
+            if(type==='y') for(let i=0; i<a; i++) createBlock(i, 0, 'bg-yellow-400');
+            else for(let j=1; j<b; j++) for(let i=0; i<a; i++) createBlock(i, j, 'bg-green-500');
+        }
+        function createBlock(r,c,cls){
+            const b = document.createElement('div');
+            b.className = `block-unit ${cls} absolute`;
+            b.style.top = (r*48)+'px'; b.style.left = (c*48)+'px';
+            document.getElementById('block-layer').appendChild(b);
+            setTimeout(()=>b.classList.add('block-show'), 50);
         }
 
-        function clickCol(c) {
-            if (progress === 1 && c === valB) {
-                progress = 2;
-                document.getElementById(`col-${c}`).classList.remove('flash-num');
-                // 畫出完整綠色矩陣
-                showBlocks('green');
-                // 激活交叉點
-                const target = document.getElementById(`cell-${valA}-${valB}`);
-                target.classList.replace('opacity-10', 'flash-num');
-                target.classList.add('bg-red-target', 'text-white', 'opacity-100', 'z-50');
-                target.onclick = () => { if(progress===2) finish(); };
-            }
+        function initKeypad(){
+            const box = document.querySelector('#calc-box .grid');
+            box.innerHTML = "";
+            [1,2,3,4,5,6,7,8,9,'C',0,'OK'].forEach(k => {
+                const btn = document.createElement('button');
+                btn.className = "bg-slate-700 p-6 rounded-xl text-2xl font-bold active:bg-white active:text-black";
+                btn.innerText = k;
+                btn.onclick = () => {
+                    if(k==='C') currentInput = "";
+                    else if(k==='OK') { if(parseInt(currentInput)===a*b) success(); else currentInput=""; }
+                    else if(currentInput.length < 2) currentInput += k;
+                    document.getElementById('ans-display').innerText = currentInput || "?";
+                };
+                box.appendChild(btn);
+            });
         }
 
-        function showBlocks(color) {
-            const container = document.getElementById('block-layer');
-            if (color === 'yellow') {
-                for (let i = 0; i < valA; i++) {
-                    const b = document.createElement('div');
-                    b.className = "block-unit bg-yellow-block block-show";
-                    b.style.position = 'absolute';
-                    b.style.top = `${i * 60}px`;
-                    b.style.left = `0px`;
-                    container.appendChild(b);
-                }
-            } else {
-                for (let j = 1; j < valB; j++) {
-                    for (let i = 0; i < valA; i++) {
-                        const b = document.createElement('div');
-                        b.className = "block-unit bg-green-block";
-                        b.style.position = 'absolute';
-                        b.style.top = `${i * 60}px`;
-                        b.style.left = `${j * 60}px`;
-                        container.appendChild(b);
-                        setTimeout(() => b.classList.add('block-show'), j * 100);
-                    }
-                }
-            }
+        function success(){
+            clearInterval(timerInt);
+            document.getElementById('calc-box').classList.add('hidden');
+            document.getElementById('catch-box').classList.remove('hidden');
+            document.getElementById('dispRes').innerText = a*b;
+            document.getElementById('hp-bar').style.width = "0%";
+            setTimeout(()=>alert("🎉 成功收服超夢！"), 2000);
         }
 
-        function finish() {
-            document.getElementById('qResult').innerText = valA * valB;
-            alert("第一關完成！方塊陣型已解開，進入第二關計算捕獲！");
-        }
-
-        init();
+        window.onload = start;
     </script>
 </body>
 </html>
