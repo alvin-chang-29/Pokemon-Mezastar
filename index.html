@@ -2,144 +2,135 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>九九乘法三步引導 - 模組 v3.2</title>
+    <title>對戰第一關：方塊定位 - 模組 v3.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 虛線引導動畫 */
-        @keyframes dash-flow { to { stroke-dashoffset: -20; } }
-        .guide-dash {
-            stroke-dasharray: 5, 5;
-            animation: dash-flow 1s linear infinite;
+        .block-unit {
+            width: 30px; height: 30px;
+            margin: 2px; border-radius: 4px;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform: scale(0);
         }
-        /* 閃爍框效果 */
-        .flash-yellow { animation: pulse-yellow 0.6s infinite alternate; border: 4px solid #facc15 !important; }
-        .flash-green { animation: pulse-green 0.6s infinite alternate; border: 4px solid #22c55e !important; }
-        .flash-red { animation: pulse-red 0.6s infinite alternate; border: 4px solid #ef4444 !important; }
-
-        @keyframes pulse-yellow { from { background: rgba(250,204,21,0.2); } to { background: rgba(250,204,21,0.8); } }
-        @keyframes pulse-green { from { background: rgba(34,197,94,0.2); } to { background: rgba(34,197,94,0.8); } }
-        @keyframes pulse-red { from { background: rgba(239,68,68,0.2); transform: scale(1.1); } to { background: rgba(239,68,68,1); transform: scale(1.2); } }
+        .block-show { transform: scale(1); }
+        .bg-yellow-block { background-color: #facc15; box-shadow: 0 0 10px #facc15; }
+        .bg-green-block { background-color: #22c55e; box-shadow: 0 0 10px #22c55e; }
+        .bg-red-target { background-color: #ef4444; animation: pulse-red 0.5s infinite alternate; }
         
-        .grid-container { position: relative; display: inline-grid; }
-        svg { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 10; }
+        @keyframes pulse-red { from { transform: scale(1); } to { transform: scale(1.2); } }
+        
+        .flash-num { animation: flash 0.8s infinite alternate; border-width: 4px !important; }
+        @keyframes flash { from { opacity: 0.3; } to { opacity: 1; } }
     </style>
 </head>
-<body class="bg-slate-950 text-white flex flex-col items-center justify-center min-h-screen p-4">
+<body class="bg-slate-950 text-white flex flex-col items-center justify-center min-h-screen">
 
-    <div class="mb-8 text-center bg-slate-900 p-6 rounded-3xl border-2 border-slate-800 shadow-xl">
-        <h2 class="text-slate-400 mb-4 tracking-widest font-bold">Step 1: 定位捕獲目標</h2>
-        <div class="flex items-center gap-6 text-6xl font-black">
-            <div class="flex flex-col items-center">
-                <span class="text-xs text-yellow-400 mb-2">被乘數</span>
-                <span id="displayA" class="border-4 border-yellow-400 px-4 py-2 rounded-2xl text-yellow-400">1</span>
-            </div>
+    <div class="mb-6 text-center">
+        <h2 class="text-xl text-blue-400 font-bold mb-4">第一關：方塊陣型定位</h2>
+        <div class="flex items-center gap-4 text-5xl font-black bg-slate-900 p-6 rounded-3xl border-2 border-slate-800">
+            <span id="qA" class="text-yellow-400 px-4 py-2 border-2 border-transparent">3</span>
             <span class="text-white">×</span>
-            <div class="flex flex-col items-center">
-                <span class="text-xs text-green-400 mb-2">乘數</span>
-                <span id="displayB" class="border-4 border-green-400 px-4 py-2 rounded-2xl text-green-400">9</span>
-            </div>
-            <span class="text-white">=</span>
-            <div class="flex flex-col items-center">
-                <span class="text-xs text-red-500 mb-2">積</span>
-                <span id="displayResult" class="border-4 border-dashed border-red-500 px-6 py-2 rounded-2xl text-red-500">?</span>
-            </div>
+            <span id="qB" class="text-green-400 px-4 py-2 border-2 border-transparent">2</span>
+            <span>=</span>
+            <span id="qResult" class="text-red-500">?</span>
         </div>
     </div>
 
-    <div class="grid-container bg-slate-800 p-4 rounded-2xl shadow-inner">
-        <svg id="svg-guides" width="550" height="550"></svg>
-        <div id="grid" class="grid grid-cols-10 gap-2 relative z-20">
+    <div class="relative bg-slate-900 p-10 rounded-[2rem] shadow-2xl">
+        <div id="grid-ui" class="grid grid-cols-10 gap-3">
+            </div>
+        
+        <div id="block-layer" class="absolute top-[115px] left-[115px] pointer-events-none">
             </div>
     </div>
 
     <script>
-        const a = 1; // 被乘數
-        const b = 9; // 乘數
-        let step = 1; // 1:按黃色, 2:按綠色, 3:按紅色
-        
-        const gridEl = document.getElementById('grid');
-        const svg = document.getElementById('svg-guides');
+        const valA = 3; // 被乘數
+        const valB = 2; // 乘數
+        let progress = 0; // 0:待點黃, 1:待點綠, 2:待點紅
 
         function init() {
+            const grid = document.getElementById('grid-ui');
             for (let r = 0; r <= 9; r++) {
                 for (let c = 0; c <= 9; c++) {
-                    const cell = document.createElement('div');
-                    cell.className = "w-12 h-12 flex items-center justify-center font-bold text-lg rounded-lg transition-all border border-slate-700";
+                    const btn = document.createElement('div');
+                    btn.className = "w-12 h-12 flex items-center justify-center font-bold text-xl rounded-xl border-2 border-slate-800 transition-all";
                     
-                    if (r === 0 && c === 0) {
-                        cell.innerText = "×";
-                    } else if (c === 0 && r > 0) {
-                        // 左側 Y 軸 (被乘數列)
-                        cell.innerText = r;
-                        cell.id = `row-${r}`;
-                        if (r === a) cell.classList.add('flash-yellow');
-                        cell.onclick = () => { if(step===1 && r===a) nextStep(); };
+                    if (r === 0 && c === 0) { btn.innerText = "×"; }
+                    else if (c === 0 && r > 0) {
+                        btn.innerText = r;
+                        btn.id = `row-${r}`;
+                        btn.className += " text-yellow-400 cursor-pointer";
+                        if (r === valA) btn.classList.add('flash-num', 'border-yellow-400');
+                        btn.onclick = () => clickRow(r);
                     } else if (r === 0 && c > 0) {
-                        // 頂部 X 軸 (乘數列)
-                        cell.innerText = c;
-                        cell.id = `col-${c}`;
-                        if (c === b) cell.classList.add('opacity-30'); // 尚未到此步先轉淡
-                        cell.onclick = () => { if(step===2 && c===b) nextStep(); };
+                        btn.innerText = c;
+                        btn.id = `col-${c}`;
+                        btn.className += " text-green-400 opacity-20";
+                        btn.onclick = () => clickCol(c);
                     } else {
-                        // 內容格 (積)
-                        cell.className += " bg-slate-900/50 text-transparent";
-                        cell.innerText = r * c;
-                        cell.id = `cell-${r}-${c}`;
-                        cell.onclick = () => { if(step===3 && r===a && c===b) finish(); };
+                        btn.id = `cell-${r}-${c}`;
+                        btn.className += " opacity-10 text-xs";
+                        btn.innerText = r * c;
                     }
-                    gridEl.appendChild(cell);
+                    grid.appendChild(btn);
                 }
             }
-            drawGuide(1); // 畫第一步的黃線
         }
 
-        function drawGuide(s) {
-            svg.innerHTML = '';
-            const rect = gridEl.getBoundingClientRect();
-            if (s === 1) {
-                // 從算式的 1 連向表的 row-1
-                createLine(150, -50, 25, 60, "#facc15"); 
-            } else if (s === 2) {
-                // 從算式的 9 連向表的 col-9
-                createLine(350, -50, 480, 25, "#22c55e");
+        function clickRow(r) {
+            if (progress === 0 && r === valA) {
+                progress = 1;
+                document.getElementById(`row-${r}`).classList.remove('flash-num');
+                document.getElementById(`col-${valB}`).classList.remove('opacity-20');
+                document.getElementById(`col-${valB}`).classList.add('flash-num', 'border-green-400');
+                // 畫出第一排黃色方塊
+                showBlocks('yellow');
             }
         }
 
-        function createLine(x1, y1, x2, y2, color) {
-            const line = document.createElementNS("http://www.w3.org/2000/svg", "path");
-            line.setAttribute("d", `M ${x1} ${y1} Q ${x1} ${y2} ${x2} ${y2}`);
-            line.setAttribute("stroke", color);
-            line.setAttribute("stroke-width", "3");
-            line.setAttribute("fill", "none");
-            line.setAttribute("class", "guide-dash");
-            svg.appendChild(line);
+        function clickCol(c) {
+            if (progress === 1 && c === valB) {
+                progress = 2;
+                document.getElementById(`col-${c}`).classList.remove('flash-num');
+                // 畫出完整綠色矩陣
+                showBlocks('green');
+                // 激活交叉點
+                const target = document.getElementById(`cell-${valA}-${valB}`);
+                target.classList.replace('opacity-10', 'flash-num');
+                target.classList.add('bg-red-target', 'text-white', 'opacity-100', 'z-50');
+                target.onclick = () => { if(progress===2) finish(); };
+            }
         }
 
-        function nextStep() {
-            if (step === 1) {
-                document.getElementById(`row-${a}`).classList.remove('flash-yellow');
-                document.getElementById(`row-${a}`).classList.add('bg-yellow-400', 'text-black');
-                document.getElementById(`col-${b}`).classList.remove('opacity-30');
-                document.getElementById(`col-${b}`).classList.add('flash-green');
-                step = 2;
-                drawGuide(2);
-            } else if (step === 2) {
-                document.getElementById(`col-${b}`).classList.remove('flash-green');
-                document.getElementById(`col-${b}`).classList.add('bg-green-500', 'text-black');
-                document.getElementById(`cell-${a}-${b}`).classList.add('flash-red');
-                step = 3;
-                svg.innerHTML = ''; // 清除虛線
+        function showBlocks(color) {
+            const container = document.getElementById('block-layer');
+            if (color === 'yellow') {
+                for (let i = 0; i < valA; i++) {
+                    const b = document.createElement('div');
+                    b.className = "block-unit bg-yellow-block block-show";
+                    b.style.position = 'absolute';
+                    b.style.top = `${i * 60}px`;
+                    b.style.left = `0px`;
+                    container.appendChild(b);
+                }
+            } else {
+                for (let j = 1; j < valB; j++) {
+                    for (let i = 0; i < valA; i++) {
+                        const b = document.createElement('div');
+                        b.className = "block-unit bg-green-block";
+                        b.style.position = 'absolute';
+                        b.style.top = `${i * 60}px`;
+                        b.style.left = `${j * 60}px`;
+                        container.appendChild(b);
+                        setTimeout(() => b.classList.add('block-show'), j * 100);
+                    }
+                }
             }
         }
 
         function finish() {
-            const target = document.getElementById(`cell-${a}-${b}`);
-            target.classList.remove('flash-red');
-            target.classList.add('bg-red-600', 'text-white');
-            document.getElementById('displayResult').innerText = a * b;
-            document.getElementById('displayResult').classList.remove('border-dashed');
-            document.getElementById('displayResult').classList.add('bg-red-600', 'text-white');
-            setTimeout(() => alert("捕獲成功！你解開了乘法的奧秘！"), 500);
+            document.getElementById('qResult').innerText = valA * valB;
+            alert("第一關完成！方塊陣型已解開，進入第二關計算捕獲！");
         }
 
         init();
