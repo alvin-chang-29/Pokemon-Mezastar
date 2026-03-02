@@ -2,103 +2,139 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>戰鬥紀錄與分析 - 模組 v8.6</title>
+    <title>持久化進化系統 - v9.1 整合測試</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+    <style>
+        .exp-bar { height: 8px; background: #1e293b; border-radius: 999px; overflow: hidden; }
+        .exp-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); transition: width 0.8s ease-in-out; }
+        .locked { filter: brightness(0) invert(0.3); }
+    </style>
 </head>
-<body class="bg-slate-950 text-white p-6">
+<body class="bg-slate-950 text-white p-8">
 
     <div class="max-w-4xl mx-auto">
-        <header class="mb-10">
-            <h1 class="text-3xl font-black text-blue-400">戰鬥紀錄與分析</h1>
-            <p class="text-slate-500">檢視你的冒險歷程與數學戰力</p>
+        <header class="flex justify-between items-end mb-8 border-b border-slate-800 pb-4">
+            <div>
+                <h1 class="text-3xl font-black text-yellow-500">我的口袋資料庫</h1>
+                <p class="text-slate-500 text-sm">數據已透過 Dexie.js 自動存檔</p>
+            </div>
+            <button onclick="resetDatabase()" class="text-xs text-red-900 hover:text-red-500">重置所有數據</button>
         </header>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-            <div class="bg-slate-900 p-6 rounded-3xl border border-slate-800 text-center">
-                <p class="text-slate-500 text-sm">總對戰次數</p>
-                <p class="text-4xl font-black mt-2">42</p>
-            </div>
-            <div class="bg-slate-900 p-6 rounded-3xl border border-slate-800 text-center">
-                <p class="text-slate-500 text-sm">成功收服率</p>
-                <p class="text-4xl font-black mt-2 text-green-400">85%</p>
-            </div>
-            <div class="bg-slate-900 p-6 rounded-3xl border border-slate-800 text-center">
-                <p class="text-slate-500 text-sm">平均 KO 時間</p>
-                <p class="text-4xl font-black mt-2 text-yellow-500">18s</p>
-            </div>
-        </div>
+        <div id="backpack-grid" class="grid grid-cols-4 md:grid-cols-8 gap-4 mb-10"></div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div class="bg-slate-900 p-6 rounded-3xl border border-slate-800">
-                <h3 class="text-xl font-bold mb-6 italic">數學弱點偵測 (錯誤次數)</h3>
-                <canvas id="errorChart"></canvas>
-            </div>
-
-            <div class="bg-slate-900 p-6 rounded-3xl border border-slate-800 h-[400px] overflow-y-auto">
-                <h3 class="text-xl font-bold mb-6 italic">最近 5 場對戰詳情</h3>
-                <div id="history-list" class="space-y-4">
-                    </div>
+        <div id="detail-card" class="hidden bg-slate-900 p-8 rounded-[2.5rem] border-2 border-slate-800 shadow-2xl">
+            <div class="flex flex-col md:flex-row items-center gap-10">
+                <div class="text-center">
+                    <div id="p-img" class="w-40 h-40 bg-contain bg-no-repeat bg-center mx-auto"></div>
+                    <h2 id="p-name" class="text-3xl font-black mt-4">--</h2>
+                    <p class="text-blue-400 font-mono mt-2">EXP: <span id="p-exp">0</span></p>
+                    <button onclick="addExp(10)" class="mt-6 bg-blue-600 px-6 py-2 rounded-full font-bold active:scale-95 transition">模擬答對 +10 題</button>
+                </div>
+                <div class="flex-grow">
+                    <p class="text-slate-500 mb-6 font-bold tracking-widest">進化路徑</p>
+                    <div id="evo-chain" class="flex justify-between items-center"></div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // 模擬戰鬥紀錄數據
-        const battleHistory = [
-            { enemy: "超夢", result: "Success", time: "15s", errors: ["7x8"], date: "2024/05/20" },
-            { enemy: "噴火龍", result: "Escape", time: "60s", errors: ["8x9", "8x7"], date: "2024/05/19" },
-            { enemy: "皮卡丘", result: "Success", time: "10s", errors: [], date: "2024/05/19" },
-            { enemy: "烈空坐", result: "Failed", time: "45s", errors: ["9x9"], date: "2024/05/18" },
-            { enemy: "水箭龜", result: "Success", time: "22s", errors: ["6x7"], date: "2024/05/17" }
+        // 1. 初始化 Dexie 數據庫
+        const db = new Dexie("PokemonMathDB");
+        db.version(1).stores({
+            my_pockets: '++id, pokemonId, name, exp, chain'
+        });
+
+        const EVO_GOAL = 50; // 進化門檻
+        let activeId = null;
+
+        // 2. 預設 8 隻資料
+        const initialPokes = [
+            { pokemonId: 25, name: "皮卡丘", exp: 0, chain: [25, 26] },
+            { pokemonId: 4, name: "小火龍", exp: 0, chain: [4, 5, 6] },
+            { id: 7, name: "傑尼龜", exp: 0, chain: [7, 8, 9] },
+            { pokemonId: 1, name: "妙蛙種子", exp: 0, chain: [1, 2, 3] },
+            { pokemonId: 39, name: "胖丁", exp: 0, chain: [39, 40] },
+            { pokemonId: 83, name: "大蔥鴨", exp: 0, chain: [83] },
+            { pokemonId: 390, name: "小火焰猴", exp: 0, chain: [390, 391, 392] },
+            { pokemonId: 447, name: "利歐路", exp: 0, chain: [447, 448] }
         ];
 
-        function initHistory() {
-            const list = document.getElementById('history-list');
-            battleHistory.forEach(b => {
-                const item = document.createElement('div');
-                item.className = "bg-black/40 p-4 rounded-xl border-l-4 " + 
-                                (b.result === 'Success' ? 'border-green-500' : 'border-red-500');
-                item.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <span class="font-bold text-lg">${b.enemy}</span>
-                        <span class="text-xs text-slate-500">${b.date}</span>
-                    </div>
-                    <p class="text-xs mt-1 ${b.result === 'Success' ? 'text-green-400' : 'text-red-400'}">${b.result} - 耗時 ${b.time}</p>
-                    <div class="mt-2 flex flex-wrap gap-1">
-                        ${b.errors.map(e => `<span class="bg-red-900/30 text-red-400 text-[10px] px-2 py-0.5 rounded">錯題: ${e}</span>`).join('')}
-                    </div>
+        async function init() {
+            const count = await db.my_pockets.count();
+            if (count === 0) await db.my_pockets.bulkAdd(initialPokes);
+            renderBackpack();
+        }
+
+        // 3. 渲染背包
+        async function renderBackpack() {
+            const grid = document.getElementById('backpack-grid');
+            const all = await db.my_pockets.toArray();
+            grid.innerHTML = "";
+            
+            all.forEach(p => {
+                // 計算當前型態
+                let stage = 0;
+                if(p.exp >= EVO_GOAL * 2 && p.chain[2]) stage = 2;
+                else if(p.exp >= EVO_GOAL && p.chain[1]) stage = 1;
+                
+                const card = document.createElement('div');
+                card.className = "bg-slate-900 p-2 rounded-xl border border-slate-800 flex flex-col items-center cursor-pointer hover:border-yellow-500";
+                card.innerHTML = `
+                    <div class="w-12 h-12 bg-contain bg-no-repeat bg-center" style="background-image:url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${p.chain[stage]}.png')"></div>
                 `;
-                list.appendChild(item);
+                card.onclick = () => showDetail(p.id);
+                grid.appendChild(card);
             });
         }
 
-        function initChart() {
-            const ctx = document.getElementById('errorChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['2x', '3x', '4x', '5x', '6x', '7x', '8x', '9x'],
-                    datasets: [{
-                        label: '錯誤題數統計',
-                        data: [2, 1, 4, 0, 8, 12, 15, 9], // 模擬數據
-                        backgroundColor: 'rgba(239, 68, 68, 0.6)',
-                        borderColor: '#ef4444',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    scales: {
-                        y: { beginAtZero: true, grid: { color: '#334155' } },
-                        x: { grid: { display: false } }
-                    },
-                    plugins: { legend: { display: false } }
-                }
+        // 4. 顯示詳情與進化鏈
+        async function showDetail(id) {
+            activeId = id;
+            const p = await db.my_pockets.get(id);
+            document.getElementById('detail-card').classList.remove('hidden');
+            document.getElementById('p-name').innerText = p.name;
+            document.getElementById('p-exp').innerText = p.exp;
+            
+            let stage = 0;
+            if(p.exp >= EVO_GOAL * 2 && p.chain[2]) stage = 2;
+            else if(p.exp >= EVO_GOAL && p.chain[1]) stage = 1;
+            
+            document.getElementById('p-img').style.backgroundImage = `url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${p.chain[stage]}.png')`;
+            
+            // 渲染進化鏈
+            const chainBox = document.getElementById('evo-chain');
+            chainBox.innerHTML = "";
+            p.chain.forEach((evoId, i) => {
+                const targetExp = i * EVO_GOAL;
+                const isLocked = p.exp < targetExp;
+                const node = document.createElement('div');
+                node.className = "flex flex-col items-center";
+                node.innerHTML = `
+                    <div class="w-16 h-16 bg-contain bg-no-repeat bg-center ${isLocked ? 'locked' : ''}" style="background-image:url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${evoId}.png')"></div>
+                    <div class="exp-bar w-16 mt-2"><div class="exp-fill" style="width:${Math.min(100, (p.exp/targetExp)*100 || 0)}%"></div></div>
+                `;
+                chainBox.appendChild(node);
             });
         }
 
-        initHistory();
-        initChart();
+        // 5. 增加 EXP 並存入數據庫
+        async function addExp(val) {
+            if (!activeId) return;
+            const p = await db.my_pockets.get(activeId);
+            await db.my_pockets.update(activeId, { exp: p.exp + val });
+            showDetail(activeId);
+            renderBackpack();
+        }
+
+        async function resetDatabase() {
+            await db.my_pockets.clear();
+            location.reload();
+        }
+
+        init();
     </script>
 </body>
 </html>
