@@ -2,94 +2,147 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>乘法引導測試 - 模組 v3.1</title>
+    <title>九九乘法三步引導 - 模組 v3.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 乘數/被乘數紅框 */
-        .header-highlight {
-            border: 4px solid #ef4444 !important;
-            border-radius: 8px;
-            position: relative;
-            z-index: 50;
+        /* 虛線引導動畫 */
+        @keyframes dash-flow { to { stroke-dashoffset: -20; } }
+        .guide-dash {
+            stroke-dasharray: 5, 5;
+            animation: dash-flow 1s linear infinite;
         }
-        /* 乘積目標格綠色閃爍 */
-        .product-flash {
-            animation: success-pulse 0.6s infinite alternate;
-            border: 4px solid #22c55e !important;
-            box-shadow: 0 0 15px #22c55e;
-            z-index: 60;
-        }
-        @keyframes success-pulse {
-            from { background-color: rgba(34, 197, 94, 0.2); transform: scale(1); }
-            to { background-color: rgba(34, 197, 94, 0.9); transform: scale(1.1); }
-        }
-        /* 行列亮帶（淡淡的紅色引導孩子視線移動） */
-        .guide-line { background-color: rgba(239, 68, 68, 0.1); }
+        /* 閃爍框效果 */
+        .flash-yellow { animation: pulse-yellow 0.6s infinite alternate; border: 4px solid #facc15 !important; }
+        .flash-green { animation: pulse-green 0.6s infinite alternate; border: 4px solid #22c55e !important; }
+        .flash-red { animation: pulse-red 0.6s infinite alternate; border: 4px solid #ef4444 !important; }
+
+        @keyframes pulse-yellow { from { background: rgba(250,204,21,0.2); } to { background: rgba(250,204,21,0.8); } }
+        @keyframes pulse-green { from { background: rgba(34,197,94,0.2); } to { background: rgba(34,197,94,0.8); } }
+        @keyframes pulse-red { from { background: rgba(239,68,68,0.2); transform: scale(1.1); } to { background: rgba(239,68,68,1); transform: scale(1.2); } }
+        
+        .grid-container { position: relative; display: inline-grid; }
+        svg { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 10; }
     </style>
 </head>
-<body class="bg-slate-950 text-white flex items-center justify-center min-h-screen">
+<body class="bg-slate-950 text-white flex flex-col items-center justify-center min-h-screen p-4">
 
-    <div class="bg-slate-900 p-8 rounded-[2rem] shadow-2xl border-2 border-slate-800">
-        <div class="text-center mb-6">
-            <h2 class="text-yellow-400 text-2xl font-bold mb-2">Step 1: 定位目標</h2>
-            <div class="flex justify-center items-center gap-4 text-5xl font-black">
-                <span class="text-red-500 border-2 border-red-500 px-3 rounded-lg" id="valA">1</span>
-                <span>×</span>
-                <span class="text-red-500 border-2 border-red-500 px-3 rounded-lg" id="valB">9</span>
-                <span class="text-white">=</span>
-                <span class="text-green-500" id="valTarget">?</span>
+    <div class="mb-8 text-center bg-slate-900 p-6 rounded-3xl border-2 border-slate-800 shadow-xl">
+        <h2 class="text-slate-400 mb-4 tracking-widest font-bold">Step 1: 定位捕獲目標</h2>
+        <div class="flex items-center gap-6 text-6xl font-black">
+            <div class="flex flex-col items-center">
+                <span class="text-xs text-yellow-400 mb-2">被乘數</span>
+                <span id="displayA" class="border-4 border-yellow-400 px-4 py-2 rounded-2xl text-yellow-400">1</span>
+            </div>
+            <span class="text-white">×</span>
+            <div class="flex flex-col items-center">
+                <span class="text-xs text-green-400 mb-2">乘數</span>
+                <span id="displayB" class="border-4 border-green-400 px-4 py-2 rounded-2xl text-green-400">9</span>
+            </div>
+            <span class="text-white">=</span>
+            <div class="flex flex-col items-center">
+                <span class="text-xs text-red-500 mb-2">積</span>
+                <span id="displayResult" class="border-4 border-dashed border-red-500 px-6 py-2 rounded-2xl text-red-500">?</span>
             </div>
         </div>
+    </div>
 
-        <div id="grid" class="grid grid-cols-10 gap-1 bg-slate-800 p-3 rounded-xl">
+    <div class="grid-container bg-slate-800 p-4 rounded-2xl shadow-inner">
+        <svg id="svg-guides" width="550" height="550"></svg>
+        <div id="grid" class="grid grid-cols-10 gap-2 relative z-20">
             </div>
-        
-        <p class="mt-6 text-slate-400 text-center">💡 引導：沿著紅色數字延伸，點擊綠色閃爍的答案位置！</p>
     </div>
 
     <script>
-        const a = 1; // 測試 1x9
-        const b = 9;
+        const a = 1; // 被乘數
+        const b = 9; // 乘數
+        let step = 1; // 1:按黃色, 2:按綠色, 3:按紅色
+        
         const gridEl = document.getElementById('grid');
+        const svg = document.getElementById('svg-guides');
 
-        function createGrid() {
+        function init() {
             for (let r = 0; r <= 9; r++) {
                 for (let c = 0; c <= 9; c++) {
                     const cell = document.createElement('div');
-                    cell.className = "w-12 h-12 flex items-center justify-center font-bold text-lg transition-all";
+                    cell.className = "w-12 h-12 flex items-center justify-center font-bold text-lg rounded-lg transition-all border border-slate-700";
                     
                     if (r === 0 && c === 0) {
-                        cell.innerText = "";
-                    } else if (r === 0) {
-                        // 頂部 X 軸 (被乘數)
-                        cell.innerText = c;
-                        cell.className += " text-blue-400";
-                        if (c === b) cell.classList.add('header-highlight'); // 紅框標示
-                    } else if (c === 0) {
-                        // 左側 Y 軸 (乘數)
+                        cell.innerText = "×";
+                    } else if (c === 0 && r > 0) {
+                        // 左側 Y 軸 (被乘數列)
                         cell.innerText = r;
-                        cell.className += " text-red-400";
-                        if (r === a) cell.classList.add('header-highlight'); // 紅框標示
+                        cell.id = `row-${r}`;
+                        if (r === a) cell.classList.add('flash-yellow');
+                        cell.onclick = () => { if(step===1 && r===a) nextStep(); };
+                    } else if (r === 0 && c > 0) {
+                        // 頂部 X 軸 (乘數列)
+                        cell.innerText = c;
+                        cell.id = `col-${c}`;
+                        if (c === b) cell.classList.add('opacity-30'); // 尚未到此步先轉淡
+                        cell.onclick = () => { if(step===2 && c===b) nextStep(); };
                     } else {
-                        // 內容格
-                        cell.className += " bg-slate-700 rounded-md";
-                        // 判斷是否為交叉點 (乘積)
-                        if (r === a && c === b) {
-                            cell.classList.add('product-flash'); // 綠色閃爍引導
-                            cell.onclick = () => {
-                                document.getElementById('valTarget').innerText = a * b;
-                                alert("完美定位！孩子學會了： " + a + " x " + b + " = " + (a*b));
-                            };
-                        } else if (r === a || c === b) {
-                            cell.classList.add('guide-line'); // 淡淡的紅色引導帶
-                        }
+                        // 內容格 (積)
+                        cell.className += " bg-slate-900/50 text-transparent";
+                        cell.innerText = r * c;
+                        cell.id = `cell-${r}-${c}`;
+                        cell.onclick = () => { if(step===3 && r===a && c===b) finish(); };
                     }
                     gridEl.appendChild(cell);
                 }
             }
+            drawGuide(1); // 畫第一步的黃線
         }
 
-        createGrid();
+        function drawGuide(s) {
+            svg.innerHTML = '';
+            const rect = gridEl.getBoundingClientRect();
+            if (s === 1) {
+                // 從算式的 1 連向表的 row-1
+                createLine(150, -50, 25, 60, "#facc15"); 
+            } else if (s === 2) {
+                // 從算式的 9 連向表的 col-9
+                createLine(350, -50, 480, 25, "#22c55e");
+            }
+        }
+
+        function createLine(x1, y1, x2, y2, color) {
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            line.setAttribute("d", `M ${x1} ${y1} Q ${x1} ${y2} ${x2} ${y2}`);
+            line.setAttribute("stroke", color);
+            line.setAttribute("stroke-width", "3");
+            line.setAttribute("fill", "none");
+            line.setAttribute("class", "guide-dash");
+            svg.appendChild(line);
+        }
+
+        function nextStep() {
+            if (step === 1) {
+                document.getElementById(`row-${a}`).classList.remove('flash-yellow');
+                document.getElementById(`row-${a}`).classList.add('bg-yellow-400', 'text-black');
+                document.getElementById(`col-${b}`).classList.remove('opacity-30');
+                document.getElementById(`col-${b}`).classList.add('flash-green');
+                step = 2;
+                drawGuide(2);
+            } else if (step === 2) {
+                document.getElementById(`col-${b}`).classList.remove('flash-green');
+                document.getElementById(`col-${b}`).classList.add('bg-green-500', 'text-black');
+                document.getElementById(`cell-${a}-${b}`).classList.add('flash-red');
+                step = 3;
+                svg.innerHTML = ''; // 清除虛線
+            }
+        }
+
+        function finish() {
+            const target = document.getElementById(`cell-${a}-${b}`);
+            target.classList.remove('flash-red');
+            target.classList.add('bg-red-600', 'text-white');
+            document.getElementById('displayResult').innerText = a * b;
+            document.getElementById('displayResult').classList.remove('border-dashed');
+            document.getElementById('displayResult').classList.add('bg-red-600', 'text-white');
+            setTimeout(() => alert("捕獲成功！你解開了乘法的奧秘！"), 500);
+        }
+
+        init();
     </script>
 </body>
 </html>
