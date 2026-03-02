@@ -3,111 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>強化戰鬥動效 - 模組測試 v2.1</title>
+    <title>九九乘法對戰 - 模組測試 v3.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 強烈震動動畫 */
-        @keyframes strong-shake {
-            0% { transform: translate(0, 0) rotate(0deg); }
-            10% { transform: translate(-8px, -5px) rotate(-3deg); }
-            30% { transform: translate(8px, 5px) rotate(3deg); }
-            50% { transform: translate(-8px, 5px) rotate(-1deg); }
-            70% { transform: translate(8px, -5px) rotate(3deg); }
-            90% { transform: translate(-5px, 2px) rotate(-1deg); }
-            100% { transform: translate(0, 0) rotate(0deg); }
+        .grid-cell { transition: all 0.2s; }
+        .grid-cell:active { transform: scale(0.9); }
+        /* 定位閃爍效果 */
+        .guide-flash { animation: guide-pulse 0.8s infinite alternate; }
+        @keyframes guide-pulse {
+            from { background-color: rgba(239, 68, 68, 0.2); }
+            to { background-color: rgba(239, 68, 68, 0.8); }
         }
-
-        /* 呼吸光芒動畫 */
-        @keyframes aura-glow-enemy {
-            from { filter: drop-shadow(0 0 10px rgba(255, 0, 0, 0.6)) brightness(1); }
-            to { filter: drop-shadow(0 0 30px rgba(255, 50, 50, 0.9)) brightness(1.3); }
-        }
-        @keyframes aura-glow-player {
-            from { filter: drop-shadow(0 0 10px rgba(0, 150, 255, 0.6)) brightness(1); }
-            to { filter: drop-shadow(0 0 30px rgba(50, 200, 255, 0.9)) brightness(1.3); }
-        }
-
-        /* 快速閃爍 */
-        @keyframes intense-flash {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
-        }
-
-        .battle-active-enemy {
-            animation: strong-shake 0.15s infinite, aura-glow-enemy 0.8s ease-in-out infinite alternate, intense-flash 0.3s infinite;
-        }
-
-        .battle-active-player {
-            /* 玩家側同樣震動但光芒不同色 */
-            animation: strong-shake 0.15s infinite, aura-glow-player 0.8s ease-in-out infinite alternate, intense-flash 0.3s infinite;
-        }
-
-        /* 逃跑動畫 (含搖晃位移) */
-        .escape-sequence {
-            transition: transform 4s cubic-bezier(0.45, 0.05, 0.55, 0.95), opacity 2s;
-            transform: translateX(120vw) translateY(-20px) rotate(20deg) !important;
-            animation: strong-shake 0.3s infinite !important; /* 逃跑時持續搖晃 */
+        /* 精靈球 OK 鍵晃動 */
+        .pokeball-btn:hover { animation: shake 0.5s infinite; }
+        @keyframes shake {
+            0%, 100% { transform: rotate(0); }
+            25% { transform: rotate(-10deg); }
+            75% { transform: rotate(10deg); }
         }
     </style>
 </head>
-<body class="bg-slate-950 flex items-center justify-center min-h-screen p-4">
+<body class="bg-slate-900 text-white flex flex-col items-center justify-center min-h-screen p-4">
 
-    <div class="w-full max-w-6xl grid grid-cols-3 gap-8 items-center bg-black/50 p-12 rounded-[3rem] border-4 border-slate-800 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+    <div id="battle-core" class="bg-slate-800 p-6 rounded-3xl border-4 border-slate-700 shadow-2xl max-w-md w-full">
         
-        <div class="flex flex-col items-center">
-            <div id="enemy" class="w-64 h-64 bg-contain bg-no-repeat bg-center transition-all"
-                 style="background-image: url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/150.png');">
+        <div class="text-center mb-6">
+            <h2 id="step-title" class="text-xl font-bold text-yellow-400">Step 1: 定位目標</h2>
+            <p id="math-question" class="text-4xl font-black mt-2">尋找 7 × 8</p>
+        </div>
+
+        <div id="matrix-container" class="grid grid-cols-10 gap-1 bg-slate-900 p-2 rounded-lg shadow-inner">
             </div>
-            <p class="mt-4 text-red-500 font-black tracking-widest">ENEMY: 超夢</p>
-        </div>
 
-        <div class="text-center">
-            <button onclick="toggleBattle()" id="battleBtn" class="bg-red-600 text-white text-3xl font-black px-12 py-6 rounded-full hover:bg-red-500 shadow-[0_0_20px_rgba(220,38,38,0.5)] active:scale-90 transition-all">
-                進入對戰狀態
-            </button>
-            <p id="msg" class="mt-4 text-slate-400 font-mono"></p>
-        </div>
-
-        <div class="flex flex-col items-center">
-            <div id="player" class="w-64 h-64 bg-contain bg-no-repeat bg-center transition-all"
-                 style="background-image: url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png'); transform: scaleX(-1);">
+        <div id="calc-container" class="hidden space-y-4">
+            <div class="bg-black p-4 rounded-xl text-center text-5xl font-mono text-green-400 border-2 border-slate-600">
+                <span id="input-display">?</span>
             </div>
-            <p class="mt-4 text-blue-400 font-black tracking-widest">PLAYER: 皮卡丘</p>
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="appendNum(1)" class="bg-slate-700 p-4 rounded-lg text-2xl font-bold active:bg-blue-600">1</button>
+                <button onclick="appendNum(2)" class="bg-slate-700 p-4 rounded-lg text-2xl font-bold active:bg-blue-600">2</button>
+                <button onclick="appendNum(3)" class="bg-slate-700 p-4 rounded-lg text-2xl font-bold active:bg-blue-600">3</button>
+                <button onclick="appendNum(4)" class="bg-slate-700 p-4 rounded-lg text-2xl font-bold active:bg-blue-600">4</button>
+                <button onclick="appendNum(5)" class="bg-slate-700 p-4 rounded-lg text-2xl font-bold active:bg-blue-600">5</button>
+                <button onclick="appendNum(6)" class="bg-slate-700 p-4 rounded-lg text-2xl font-bold active:bg-blue-600">6</button>
+                <button onclick="appendNum(7)" class="bg-slate-700 p-4 rounded-lg text-2xl font-bold active:bg-blue-600">7</button>
+                <button onclick="appendNum(8)" class="bg-slate-700 p-4 rounded-lg text-2xl font-bold active:bg-blue-600">8</button>
+                <button onclick="appendNum(9)" class="bg-slate-700 p-4 rounded-lg text-2xl font-bold active:bg-blue-600">9</button>
+                <button onclick="clearNum()" class="bg-red-900 p-4 rounded-lg text-xl font-bold">C</button>
+                <button onclick="appendNum(0)" class="bg-slate-700 p-4 rounded-lg text-2xl font-bold active:bg-blue-600">0</button>
+                <button onclick="checkAnswer()" class="pokeball-btn bg-white p-2 rounded-full border-4 border-red-600 flex items-center justify-center">
+                    <div class="w-8 h-8 bg-red-600 rounded-full border-2 border-black flex items-center justify-center">
+                        <div class="w-2 h-2 bg-white rounded-full"></div>
+                    </div>
+                </button>
+            </div>
         </div>
-
     </div>
 
     <script>
-        let isBattling = false;
+        let factorA = Math.floor(Math.random() * 9) + 1;
+        let factorB = Math.floor(Math.random() * 9) + 1;
+        let currentInput = "";
 
-        function toggleBattle() {
-            const enemy = document.getElementById('enemy');
-            const player = document.getElementById('player');
-            const btn = document.getElementById('battleBtn');
-            const msg = document.getElementById('msg');
-
-            if (!isBattling) {
-                // 開始戰鬥：加入震動、光芒、閃爍
-                enemy.classList.add('battle-active-enemy');
-                player.classList.add('battle-active-player');
-                btn.innerText = "模擬失敗 (逃跑)";
-                btn.classList.replace('bg-red-600', 'bg-slate-700');
-                msg.innerText = "對戰倒數中... 感覺到了嗎？這股壓迫感！";
-                isBattling = true;
-            } else {
-                // 模擬失敗逃跑
-                enemy.classList.remove('battle-active-enemy', 'intense-flash');
-                enemy.classList.add('escape-sequence');
-                player.classList.remove('battle-active-player');
-                btn.style.display = 'none';
-                msg.innerText = "超夢逃走了！(向右搖晃滑出螢幕)";
-                
-                setTimeout(() => {
-                    alert("測試結束，重新整理可再次測試。");
-                    location.reload();
-                }, 4500);
+        const matrix = document.getElementById('matrix-container');
+        const mathQ = document.getElementById('math-question');
+        
+        function initMatrix() {
+            matrix.innerHTML = "";
+            mathQ.innerText = `尋找 ${factorA} × ${factorB}`;
+            
+            // 生成標頭與格子
+            for (let r = 0; r <= 9; r++) {
+                for (let c = 0; c <= 9; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = "h-8 flex items-center justify-center text-xs font-bold rounded-sm ";
+                    
+                    if (r === 0 && c === 0) cell.innerText = "";
+                    else if (r === 0) { cell.innerText = c; cell.className += "text-blue-400"; }
+                    else if (c === 0) { cell.innerText = r; cell.className += "text-red-400"; }
+                    else {
+                        cell.className += "grid-cell bg-slate-700 cursor-pointer hover:bg-slate-500";
+                        // 閃爍行列引導
+                        if (r === factorA || c === factorB) cell.classList.add('guide-flash');
+                        cell.onclick = () => handleStep1(r, c);
+                    }
+                    matrix.appendChild(cell);
+                }
             }
         }
+
+        function handleStep1(r, c) {
+            if (r === factorA && c === factorB) {
+                // 定位正確，切換 Step 2
+                document.getElementById('matrix-container').classList.add('hidden');
+                document.getElementById('calc-container').classList.remove('hidden');
+                document.getElementById('step-title').innerText = "Step 2: 計算捕獲";
+                document.getElementById('step-title').className = "text-xl font-bold text-red-500";
+            } else {
+                alert("位置不對喔！再找看看。");
+            }
+        }
+
+        function appendNum(n) {
+            if (currentInput.length < 2) {
+                currentInput += n;
+                document.getElementById('input-display').innerText = currentInput;
+            }
+        }
+
+        function clearNum() {
+            currentInput = "";
+            document.getElementById('input-display').innerText = "?";
+        }
+
+        function checkAnswer() {
+            const result = factorA * factorB;
+            if (parseInt(currentInput) === result) {
+                alert("🎉 答對了！精靈球投擲成功！");
+                location.reload(); // 測試完重置
+            } else {
+                alert("計算錯誤，寶可夢掙脫了！");
+                clearNum();
+            }
+        }
+
+        initMatrix();
     </script>
 </body>
 </html>
