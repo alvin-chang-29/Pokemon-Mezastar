@@ -2,140 +2,103 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>寶可夢進化背包系統 - 模組測試 v8.5</title>
+    <title>戰鬥紀錄與分析 - 模組 v8.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .evo-path-line { height: 2px; flex-grow: 1; background: #475569; margin: 0 10px; position: relative; top: 20px; }
-        .locked { filter: brightness(0) invert(0.3); } /* 剪影效果 */
-        .exp-bar { height: 8px; background: #1e293b; border-radius: 999px; overflow: hidden; border: 1px solid #334155; }
-        .exp-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); transition: width 0.5s ease-out; }
-    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="bg-slate-950 text-white p-4 md:p-8">
+<body class="bg-slate-950 text-white p-6">
 
-    <div class="max-w-6xl mx-auto">
-        <header class="flex justify-between items-center mb-8 border-b border-slate-800 pb-4">
-            <h1 class="text-3xl font-black text-yellow-500 tracking-widest">我的寶可夢背包</h1>
-            <div class="text-right">
-                <p class="text-xs text-slate-400">進化難易度設定：<span class="text-green-400">普通 (1.0x)</span></p>
-                <p class="text-xs text-slate-400">總答對題數：<span id="total-correct">0</span></p>
-            </div>
+    <div class="max-w-4xl mx-auto">
+        <header class="mb-10">
+            <h1 class="text-3xl font-black text-blue-400">戰鬥紀錄與分析</h1>
+            <p class="text-slate-500">檢視你的冒險歷程與數學戰力</p>
         </header>
 
-        <div id="backpack-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-12">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            <div class="bg-slate-900 p-6 rounded-3xl border border-slate-800 text-center">
+                <p class="text-slate-500 text-sm">總對戰次數</p>
+                <p class="text-4xl font-black mt-2">42</p>
+            </div>
+            <div class="bg-slate-900 p-6 rounded-3xl border border-slate-800 text-center">
+                <p class="text-slate-500 text-sm">成功收服率</p>
+                <p class="text-4xl font-black mt-2 text-green-400">85%</p>
+            </div>
+            <div class="bg-slate-900 p-6 rounded-3xl border border-slate-800 text-center">
+                <p class="text-slate-500 text-sm">平均 KO 時間</p>
+                <p class="text-4xl font-black mt-2 text-yellow-500">18s</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="bg-slate-900 p-6 rounded-3xl border border-slate-800">
+                <h3 class="text-xl font-bold mb-6 italic">數學弱點偵測 (錯誤次數)</h3>
+                <canvas id="errorChart"></canvas>
             </div>
 
-        <div id="evo-panel" class="hidden bg-slate-900 rounded-[2rem] p-8 border-2 border-slate-800 shadow-2xl">
-            <div class="flex flex-col md:flex-row items-center gap-12">
-                <div class="text-center">
-                    <div id="detail-img" class="w-48 h-48 bg-contain bg-no-repeat bg-center mb-4"></div>
-                    <h2 id="detail-name" class="text-3xl font-black">--</h2>
-                    <p class="text-blue-400 mt-2">已答對：<span id="detail-count">0</span> 題</p>
-                    <button onclick="simulateCorrect()" class="mt-6 bg-blue-600 hover:bg-blue-500 px-6 py-2 rounded-full font-bold transition-all active:scale-95">模擬答對 +10 題</button>
-                </div>
-
-                <div class="flex-grow">
-                    <h3 class="text-slate-500 font-bold mb-8 tracking-widest uppercase">進化型態與需求</h3>
-                    <div id="evo-chain" class="flex items-start justify-between">
-                        </div>
-                </div>
+            <div class="bg-slate-900 p-6 rounded-3xl border border-slate-800 h-[400px] overflow-y-auto">
+                <h3 class="text-xl font-bold mb-6 italic">最近 5 場對戰詳情</h3>
+                <div id="history-list" class="space-y-4">
+                    </div>
             </div>
         </div>
     </div>
 
     <script>
-        // 進化設定：未來可從遊戲設定調整
-        const EVO_CONFIG = { stage1: 50, stage2: 150 };
-
-        // 預設 8 隻寶可夢資料庫
-        const backpackData = [
-            { id: 25, name: "皮卡丘", correctCount: 0, chain: [25, 26] },
-            { id: 4, name: "小火龍", correctCount: 0, chain: [4, 5, 6] },
-            { id: 7, name: "傑尼龜", correctCount: 0, chain: [7, 8, 9] },
-            { id: 3, name: "妙蛙花", correctCount: 200, chain: [1, 2, 3] }, // 模擬已進化
-            { id: 39, name: "胖丁", correctCount: 0, chain: [39, 40] },
-            { id: 83, name: "大蔥鴨", correctCount: 0, chain: [83] }, // 無進化
-            { id: 390, name: "小火焰猴", correctCount: 0, chain: [390, 391, 392] },
-            { id: 447, name: "利歐路", correctCount: 0, chain: [447, 448] }
+        // 模擬戰鬥紀錄數據
+        const battleHistory = [
+            { enemy: "超夢", result: "Success", time: "15s", errors: ["7x8"], date: "2024/05/20" },
+            { enemy: "噴火龍", result: "Escape", time: "60s", errors: ["8x9", "8x7"], date: "2024/05/19" },
+            { enemy: "皮卡丘", result: "Success", time: "10s", errors: [], date: "2024/05/19" },
+            { enemy: "烈空坐", result: "Failed", time: "45s", errors: ["9x9"], date: "2024/05/18" },
+            { enemy: "水箭龜", result: "Success", time: "22s", errors: ["6x7"], date: "2024/05/17" }
         ];
 
-        let currentSelectedIdx = null;
-
-        function initBackpack() {
-            const grid = document.getElementById('backpack-grid');
-            grid.innerHTML = "";
-            backpackData.forEach((p, idx) => {
-                const card = document.createElement('div');
-                card.className = "bg-slate-900 p-4 rounded-2xl border border-slate-800 flex flex-col items-center cursor-pointer hover:border-blue-500 transition-all";
-                card.onclick = () => showDetail(idx);
-                
-                // 顯示目前進化型態 (根據答對數決定顯示哪一階)
-                let currentEvoId = p.chain[0];
-                if(p.correctCount >= EVO_CONFIG.stage2 && p.chain[2]) currentEvoId = p.chain[2];
-                else if(p.correctCount >= EVO_CONFIG.stage1 && p.chain[1]) currentEvoId = p.chain[1];
-
-                card.innerHTML = `
-                    <div class="w-16 h-16 bg-contain bg-no-repeat bg-center mb-2" style="background-image:url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${currentEvoId}.png')"></div>
-                    <span class="text-xs font-bold">${p.name}</span>
-                `;
-                grid.appendChild(card);
-            });
-        }
-
-        function showDetail(idx) {
-            currentSelectedIdx = idx;
-            const p = backpackData[idx];
-            document.getElementById('evo-panel').classList.remove('hidden');
-            document.getElementById('detail-name').innerText = p.name;
-            document.getElementById('detail-count').innerText = p.correctCount;
-            
-            updateEvoDisplay(p);
-        }
-
-        function updateEvoDisplay(p) {
-            const chainContainer = document.getElementById('evo-chain');
-            chainContainer.innerHTML = "";
-            
-            p.chain.forEach((evoId, i) => {
-                const step = document.createElement('div');
-                step.className = "flex flex-col items-center w-24";
-                
-                const req = i === 0 ? 0 : i === 1 ? EVO_CONFIG.stage1 : EVO_CONFIG.stage2;
-                const isLocked = p.correctCount < req;
-                
-                step.innerHTML = `
-                    <div class="w-16 h-16 bg-contain bg-no-repeat bg-center ${isLocked ? 'locked' : ''}" style="background-image:url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${evoId}.png')"></div>
-                    <p class="text-[10px] mt-2 ${isLocked ? 'text-slate-600' : 'text-green-400'}">${isLocked ? '需 ' + req + ' 題' : '已達成'}</p>
-                    <div class="exp-bar w-full mt-2">
-                        <div class="exp-fill" style="width: ${Math.min(100, (p.correctCount / (i === 0 ? 1 : req)) * 100)}%"></div>
+        function initHistory() {
+            const list = document.getElementById('history-list');
+            battleHistory.forEach(b => {
+                const item = document.createElement('div');
+                item.className = "bg-black/40 p-4 rounded-xl border-l-4 " + 
+                                (b.result === 'Success' ? 'border-green-500' : 'border-red-500');
+                item.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <span class="font-bold text-lg">${b.enemy}</span>
+                        <span class="text-xs text-slate-500">${b.date}</span>
+                    </div>
+                    <p class="text-xs mt-1 ${b.result === 'Success' ? 'text-green-400' : 'text-red-400'}">${b.result} - 耗時 ${b.time}</p>
+                    <div class="mt-2 flex flex-wrap gap-1">
+                        ${b.errors.map(e => `<span class="bg-red-900/30 text-red-400 text-[10px] px-2 py-0.5 rounded">錯題: ${e}</span>`).join('')}
                     </div>
                 `;
-                chainContainer.appendChild(step);
-                
-                if (i < p.chain.length - 1) {
-                    const line = document.createElement('div');
-                    line.className = "evo-path-line";
-                    chainContainer.appendChild(line);
+                list.appendChild(item);
+            });
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('errorChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['2x', '3x', '4x', '5x', '6x', '7x', '8x', '9x'],
+                    datasets: [{
+                        label: '錯誤題數統計',
+                        data: [2, 1, 4, 0, 8, 12, 15, 9], // 模擬數據
+                        backgroundColor: 'rgba(239, 68, 68, 0.6)',
+                        borderColor: '#ef4444',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#334155' } },
+                        x: { grid: { display: false } }
+                    },
+                    plugins: { legend: { display: false } }
                 }
             });
-
-            // 更新大圖
-            let currentEvoId = p.chain[0];
-            if(p.correctCount >= EVO_CONFIG.stage2 && p.chain[2]) currentEvoId = p.chain[2];
-            else if(p.correctCount >= EVO_CONFIG.stage1 && p.chain[1]) currentEvoId = p.chain[1];
-            document.getElementById('detail-img').style.backgroundImage = `url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${currentEvoId}.png')`;
         }
 
-        function simulateCorrect() {
-            if(currentSelectedIdx !== null) {
-                backpackData[currentSelectedIdx].correctCount += 10;
-                document.getElementById('detail-count').innerText = backpackData[currentSelectedIdx].correctCount;
-                updateEvoDisplay(backpackData[currentSelectedIdx]);
-                initBackpack(); // 同步更新列表
-            }
-        }
-
-        initBackpack();
+        initHistory();
+        initChart();
     </script>
 </body>
 </html>
