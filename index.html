@@ -3,123 +3,124 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>寶可夢對戰：最終整合修正 v8.1</title>
+    <title>寶可夢乘法對戰 v8.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 基礎動畫 */
+        /* 核心動畫 */
         @keyframes strong-shake { 0%, 100% { transform: translate(0,0); } 25% { transform: translate(-10px, 5px); } 75% { transform: translate(10px, -5px); } }
-        @keyframes flash-red { 0%, 100% { background: transparent; } 50% { background: rgba(220, 38, 38, 0.6); } }
-        @keyframes flash-yellow { 0%, 100% { background: transparent; } 50% { background: rgba(234, 179, 8, 0.6); } }
+        @keyframes flash-red { 0%, 100% { background: transparent; } 50% { background: rgba(220, 38, 38, 0.7); } }
         
         .anim-shake { animation: strong-shake 0.1s infinite; }
         .anim-flash-red { animation: flash-red 0.2s 3; }
-        .anim-flash-yellow { animation: flash-yellow 0.2s 4; }
 
-        /* 過場層：預設隱藏 */
-        #overlay {
-            position: fixed; inset: 0; z-index: 500;
-            display: none; align-items: center; justify-content: center;
-            background: rgba(0,0,0,0.95); flex-direction: column;
+        /* 防止 iOS 彈性滾動影響對位 */
+        body { position: fixed; width: 100%; height: 100%; overflow: hidden; background: #020617; }
+
+        /* 主畫面佈局 */
+        #main-ui {
+            width: 100vw; height: 100vh;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 20px; z-index: 10;
         }
 
-        /* 修正後的 HP 條樣式 */
-        .hp-container { width: 100%; height: 12px; background: #1e293b; border-radius: 999px; overflow: hidden; border: 1px solid white; }
-        .hp-bar-fill { height: 100%; transition: width 1.2s ease-out; }
+        /* 過場層：絕對置頂 */
+        #overlay {
+            position: fixed; inset: 0; 
+            z-index: 999; /* 確保在最前方 */
+            background: rgba(0,0,0,0.95);
+            display: none; /* 初始關閉 */
+            flex-direction: column; align-items: center; justify-content: center;
+        }
 
-        /* 過場專用大 HP 條 */
-        .overlay-hp-box { width: 300px; margin-top: 20px; }
+        /* HP 條組件 */
+        .hp-track { width: 100%; height: 14px; background: #1e293b; border-radius: 999px; border: 2px solid #fff; overflow: hidden; }
+        .hp-fill { height: 100%; transition: width 1.2s ease-out; }
         
-        .sprite-box { width: 280px; height: 280px; background-size: contain; background-repeat: no-repeat; background-position: center; }
+        /* 過場專用大型組件 */
+        .ov-sprite { width: 320px; height: 320px; background-size: contain; background-repeat: no-repeat; background-position: center; }
+        .ov-hp-box { width: 320px; margin-top: 30px; }
     </style>
 </head>
-<body class="bg-slate-950 text-white min-h-screen p-4 flex items-center justify-center">
+<body class="text-white font-sans">
 
-    <div id="main-battle" class="w-full max-w-6xl grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
-        <div class="flex flex-col items-center">
-            <div id="enemy-sprite" class="w-64 h-64 bg-contain bg-no-repeat bg-center" style="background-image: url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/150.png');"></div>
-            <div class="hp-container mt-4">
-                <div id="main-enemy-hp" class="hp-bar-fill bg-green-500" style="width: 100%;"></div>
+    <div id="main-ui">
+        <div class="w-full max-w-4xl flex justify-between p-4 bg-slate-900/50 rounded-2xl mb-8 border border-slate-700">
+            <span class="text-yellow-400 font-bold text-xl">九九乘法：超夢戰</span>
+            <span class="text-red-500 font-mono text-2xl">HP: <span id="main-hp-val">100</span>%</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-center w-full max-w-6xl">
+            <div class="flex flex-col items-center">
+                <div class="w-48 h-48 md:w-64 md:h-64 bg-contain bg-no-repeat bg-center" style="background-image:url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/150.png')"></div>
             </div>
-        </div>
 
-        <div class="bg-slate-900 p-8 rounded-3xl border border-slate-800 flex flex-col gap-4">
-            <div class="text-center text-4xl font-black mb-4">3 × 2 = ?</div>
-            <button onclick="triggerHit()" class="bg-red-600 py-3 rounded-xl font-bold hover:bg-red-500">測試：我方攻擊成功</button>
-            <button onclick="triggerEnemyAttack()" class="bg-blue-600 py-3 rounded-xl font-bold hover:bg-blue-500">測試：算錯(敵方攻擊)</button>
-        </div>
+            <div class="bg-slate-900 p-8 rounded-3xl border-2 border-slate-800 flex flex-col gap-6">
+                <div class="text-center text-5xl font-black mb-4">3 × 2 = ?</div>
+                <button onclick="playEnemyAttack()" class="bg-blue-600 py-4 px-8 rounded-2xl font-black text-xl hover:scale-105 transition">點擊測試：敵方攻擊</button>
+            </div>
 
-        <div class="flex flex-col items-center">
-            <div id="player-sprite" class="w-64 h-64 bg-contain bg-no-repeat bg-center" style="background-image: url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png'); transform: scaleX(-1);"></div>
-            <div class="hp-container mt-4">
-                <div id="main-player-hp" class="hp-bar-fill bg-blue-500" style="width: 100%;"></div>
+            <div class="flex flex-col items-center">
+                <div class="w-48 h-48 md:w-64 md:h-64 bg-contain bg-no-repeat bg-center" style="background-image:url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png'); transform: scaleX(-1);"></div>
+                <div class="hp-track mt-6 w-full max-w-[200px]">
+                    <div id="main-hp-bar" class="hp-fill bg-blue-500" style="width: 100%;"></div>
+                </div>
             </div>
         </div>
     </div>
 
     <div id="overlay">
-        <div id="overlay-bg-flash" class="absolute inset-0 pointer-events-none"></div>
-        <div id="ov-sprite" class="sprite-box relative z-10"></div>
+        <div id="overlay-flash" class="absolute inset-0 pointer-events-none"></div>
         
-        <div id="ov-hp-wrapper" class="overlay-hp-box hidden relative z-10">
-            <div class="hp-container">
-                <div id="ov-hp-fill" class="hp-bar-fill bg-blue-500" style="width: 100%;"></div>
+        <div class="relative z-50 flex flex-col items-center">
+            <div id="ov-img" class="ov-sprite anim-shake" style="background-image:url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png'); transform: scaleX(-1);"></div>
+            
+            <div class="ov-hp-box">
+                <div class="hp-track">
+                    <div id="ov-hp-bar" class="hp-fill bg-blue-500" style="width: 100%;"></div>
+                </div>
+                <p class="text-center text-blue-300 font-bold mt-2">PIKACHU HP</p>
             </div>
-            <p class="text-center text-sm text-blue-300 mt-2 font-bold">PIKACHU HP</p>
-        </div>
 
-        <h2 id="ov-msg" class="mt-8 text-5xl font-black italic tracking-widest relative z-10"></h2>
+            <h2 id="ov-msg" class="mt-12 text-6xl font-black text-white italic tracking-widest">敵方攻擊！</h2>
+        </div>
     </div>
 
     <script>
-        const enemyImg = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/150.png";
-        const playerImg = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png";
-        
-        let currentPlayerHp = 100;
+        let currentHp = 100;
 
-        // --- 我方攻擊成功 ---
-        function triggerHit() {
-            const ov = document.getElementById('overlay');
-            ov.style.display = 'flex';
-            
-            document.getElementById('ov-sprite').style.backgroundImage = `url('${enemyImg}')`;
-            document.getElementById('ov-sprite').className = "sprite-box anim-shake";
-            document.getElementById('overlay-bg-flash').className = "absolute inset-0 anim-flash-red";
-            document.getElementById('ov-msg').innerText = "效果絕佳！";
-            document.getElementById('ov-msg').className = "mt-8 text-5xl font-black text-red-500 italic";
-            
-            setTimeout(() => { ov.style.display = 'none'; }, 2000);
-        }
+        function playEnemyAttack() {
+            const overlay = document.getElementById('overlay');
+            const ovHpBar = document.getElementById('ov-hp-bar');
+            const mainHpBar = document.getElementById('main-hp-bar');
+            const flash = document.getElementById('overlay-flash');
+            const hpValText = document.getElementById('main-hp-val');
 
-        // --- 敵方反擊 (重點修復：漸進扣血) ---
-        function triggerEnemyAttack() {
-            const ov = document.getElementById('overlay');
-            const ovHpFill = document.getElementById('ov-hp-fill');
-            const mainHpFill = document.getElementById('main-player-hp');
-            ov.style.display = 'flex';
+            // 1. 顯示過場層
+            overlay.style.display = 'flex';
+            flash.className = "absolute inset-0 anim-flash-red";
             
-            // 1. 設定受擊者為我方
-            document.getElementById('ov-sprite').style.backgroundImage = `url('${playerImg}')`;
-            document.getElementById('ov-sprite').className = "sprite-box anim-shake";
-            document.getElementById('ov-sprite').style.transform = "scaleX(-1)";
-            
-            document.getElementById('overlay-bg-flash').className = "absolute inset-0 anim-flash-red";
-            document.getElementById('ov-msg').innerText = "敵方攻擊！";
-            document.getElementById('ov-msg').className = "mt-8 text-5xl font-black text-white";
+            // 2. 初始化 HP 條位置
+            ovHpBar.style.width = currentHp + "%";
 
-            // 2. 顯示血條並開始扣血動畫
-            document.getElementById('ov-hp-wrapper').classList.remove('hidden');
-            ovHpFill.style.width = currentPlayerHp + "%"; 
-
+            // 3. 延遲執行扣血動畫
             setTimeout(() => {
-                currentPlayerHp = Math.max(0, currentPlayerHp - 50); // 減少一半
-                ovHpFill.style.width = currentPlayerHp + "%";
-                mainHpFill.style.width = currentPlayerHp + "%"; // 同步主畫面
-            }, 300);
+                currentHp = Math.max(0, currentHp - 50); // 扣一半
+                ovHpBar.style.width = currentHp + "%";
+                mainHpBar.style.width = currentHp + "%";
+                hpValText.innerText = currentHp;
 
-            setTimeout(() => { 
-                ov.style.display = 'none'; 
-                document.getElementById('ov-hp-wrapper').classList.add('hidden');
-            }, 2500);
+                // 若血量低於一半變紅提示
+                if (currentHp <= 50) {
+                    ovHpBar.style.backgroundColor = "#ef4444";
+                    mainHpBar.style.backgroundColor = "#ef4444";
+                }
+            }, 400);
+
+            // 4. 動畫結束後關閉過場
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                flash.className = "absolute inset-0"; // 重置閃光
+            }, 3000);
         }
     </script>
 </body>
