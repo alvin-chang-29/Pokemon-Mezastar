@@ -2,132 +2,94 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>九九乘法對戰 - 模組測試 v3.0</title>
+    <title>乘法引導測試 - 模組 v3.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .grid-cell { transition: all 0.2s; }
-        .grid-cell:active { transform: scale(0.9); }
-        /* 定位閃爍效果 */
-        .guide-flash { animation: guide-pulse 0.8s infinite alternate; }
-        @keyframes guide-pulse {
-            from { background-color: rgba(239, 68, 68, 0.2); }
-            to { background-color: rgba(239, 68, 68, 0.8); }
+        /* 乘數/被乘數紅框 */
+        .header-highlight {
+            border: 4px solid #ef4444 !important;
+            border-radius: 8px;
+            position: relative;
+            z-index: 50;
         }
-        /* 精靈球 OK 鍵晃動 */
-        .pokeball-btn:hover { animation: shake 0.5s infinite; }
-        @keyframes shake {
-            0%, 100% { transform: rotate(0); }
-            25% { transform: rotate(-10deg); }
-            75% { transform: rotate(10deg); }
+        /* 乘積目標格綠色閃爍 */
+        .product-flash {
+            animation: success-pulse 0.6s infinite alternate;
+            border: 4px solid #22c55e !important;
+            box-shadow: 0 0 15px #22c55e;
+            z-index: 60;
         }
+        @keyframes success-pulse {
+            from { background-color: rgba(34, 197, 94, 0.2); transform: scale(1); }
+            to { background-color: rgba(34, 197, 94, 0.9); transform: scale(1.1); }
+        }
+        /* 行列亮帶（淡淡的紅色引導孩子視線移動） */
+        .guide-line { background-color: rgba(239, 68, 68, 0.1); }
     </style>
 </head>
-<body class="bg-slate-900 text-white flex flex-col items-center justify-center min-h-screen p-4">
+<body class="bg-slate-950 text-white flex items-center justify-center min-h-screen">
 
-    <div id="battle-core" class="bg-slate-800 p-6 rounded-3xl border-4 border-slate-700 shadow-2xl max-w-md w-full">
-        
+    <div class="bg-slate-900 p-8 rounded-[2rem] shadow-2xl border-2 border-slate-800">
         <div class="text-center mb-6">
-            <h2 id="step-title" class="text-xl font-bold text-yellow-400">Step 1: 定位目標</h2>
-            <p id="math-question" class="text-4xl font-black mt-2">尋找 7 × 8</p>
-        </div>
-
-        <div id="matrix-container" class="grid grid-cols-10 gap-1 bg-slate-900 p-2 rounded-lg shadow-inner">
-            </div>
-
-        <div id="calc-container" class="hidden space-y-4">
-            <div class="bg-black p-4 rounded-xl text-center text-5xl font-mono text-green-400 border-2 border-slate-600">
-                <span id="input-display">?</span>
-            </div>
-            <div class="grid grid-cols-3 gap-2">
-                <button onclick="appendNum(1)" class="bg-slate-700 p-4 rounded-lg text-2xl font-bold active:bg-blue-600">1</button>
-                <button onclick="appendNum(2)" class="bg-slate-700 p-4 rounded-lg text-2xl font-bold active:bg-blue-600">2</button>
-                <button onclick="appendNum(3)" class="bg-slate-700 p-4 rounded-lg text-2xl font-bold active:bg-blue-600">3</button>
-                <button onclick="appendNum(4)" class="bg-slate-700 p-4 rounded-lg text-2xl font-bold active:bg-blue-600">4</button>
-                <button onclick="appendNum(5)" class="bg-slate-700 p-4 rounded-lg text-2xl font-bold active:bg-blue-600">5</button>
-                <button onclick="appendNum(6)" class="bg-slate-700 p-4 rounded-lg text-2xl font-bold active:bg-blue-600">6</button>
-                <button onclick="appendNum(7)" class="bg-slate-700 p-4 rounded-lg text-2xl font-bold active:bg-blue-600">7</button>
-                <button onclick="appendNum(8)" class="bg-slate-700 p-4 rounded-lg text-2xl font-bold active:bg-blue-600">8</button>
-                <button onclick="appendNum(9)" class="bg-slate-700 p-4 rounded-lg text-2xl font-bold active:bg-blue-600">9</button>
-                <button onclick="clearNum()" class="bg-red-900 p-4 rounded-lg text-xl font-bold">C</button>
-                <button onclick="appendNum(0)" class="bg-slate-700 p-4 rounded-lg text-2xl font-bold active:bg-blue-600">0</button>
-                <button onclick="checkAnswer()" class="pokeball-btn bg-white p-2 rounded-full border-4 border-red-600 flex items-center justify-center">
-                    <div class="w-8 h-8 bg-red-600 rounded-full border-2 border-black flex items-center justify-center">
-                        <div class="w-2 h-2 bg-white rounded-full"></div>
-                    </div>
-                </button>
+            <h2 class="text-yellow-400 text-2xl font-bold mb-2">Step 1: 定位目標</h2>
+            <div class="flex justify-center items-center gap-4 text-5xl font-black">
+                <span class="text-red-500 border-2 border-red-500 px-3 rounded-lg" id="valA">1</span>
+                <span>×</span>
+                <span class="text-red-500 border-2 border-red-500 px-3 rounded-lg" id="valB">9</span>
+                <span class="text-white">=</span>
+                <span class="text-green-500" id="valTarget">?</span>
             </div>
         </div>
+
+        <div id="grid" class="grid grid-cols-10 gap-1 bg-slate-800 p-3 rounded-xl">
+            </div>
+        
+        <p class="mt-6 text-slate-400 text-center">💡 引導：沿著紅色數字延伸，點擊綠色閃爍的答案位置！</p>
     </div>
 
     <script>
-        let factorA = Math.floor(Math.random() * 9) + 1;
-        let factorB = Math.floor(Math.random() * 9) + 1;
-        let currentInput = "";
+        const a = 1; // 測試 1x9
+        const b = 9;
+        const gridEl = document.getElementById('grid');
 
-        const matrix = document.getElementById('matrix-container');
-        const mathQ = document.getElementById('math-question');
-        
-        function initMatrix() {
-            matrix.innerHTML = "";
-            mathQ.innerText = `尋找 ${factorA} × ${factorB}`;
-            
-            // 生成標頭與格子
+        function createGrid() {
             for (let r = 0; r <= 9; r++) {
                 for (let c = 0; c <= 9; c++) {
                     const cell = document.createElement('div');
-                    cell.className = "h-8 flex items-center justify-center text-xs font-bold rounded-sm ";
+                    cell.className = "w-12 h-12 flex items-center justify-center font-bold text-lg transition-all";
                     
-                    if (r === 0 && c === 0) cell.innerText = "";
-                    else if (r === 0) { cell.innerText = c; cell.className += "text-blue-400"; }
-                    else if (c === 0) { cell.innerText = r; cell.className += "text-red-400"; }
-                    else {
-                        cell.className += "grid-cell bg-slate-700 cursor-pointer hover:bg-slate-500";
-                        // 閃爍行列引導
-                        if (r === factorA || c === factorB) cell.classList.add('guide-flash');
-                        cell.onclick = () => handleStep1(r, c);
+                    if (r === 0 && c === 0) {
+                        cell.innerText = "";
+                    } else if (r === 0) {
+                        // 頂部 X 軸 (被乘數)
+                        cell.innerText = c;
+                        cell.className += " text-blue-400";
+                        if (c === b) cell.classList.add('header-highlight'); // 紅框標示
+                    } else if (c === 0) {
+                        // 左側 Y 軸 (乘數)
+                        cell.innerText = r;
+                        cell.className += " text-red-400";
+                        if (r === a) cell.classList.add('header-highlight'); // 紅框標示
+                    } else {
+                        // 內容格
+                        cell.className += " bg-slate-700 rounded-md";
+                        // 判斷是否為交叉點 (乘積)
+                        if (r === a && c === b) {
+                            cell.classList.add('product-flash'); // 綠色閃爍引導
+                            cell.onclick = () => {
+                                document.getElementById('valTarget').innerText = a * b;
+                                alert("完美定位！孩子學會了： " + a + " x " + b + " = " + (a*b));
+                            };
+                        } else if (r === a || c === b) {
+                            cell.classList.add('guide-line'); // 淡淡的紅色引導帶
+                        }
                     }
-                    matrix.appendChild(cell);
+                    gridEl.appendChild(cell);
                 }
             }
         }
 
-        function handleStep1(r, c) {
-            if (r === factorA && c === factorB) {
-                // 定位正確，切換 Step 2
-                document.getElementById('matrix-container').classList.add('hidden');
-                document.getElementById('calc-container').classList.remove('hidden');
-                document.getElementById('step-title').innerText = "Step 2: 計算捕獲";
-                document.getElementById('step-title').className = "text-xl font-bold text-red-500";
-            } else {
-                alert("位置不對喔！再找看看。");
-            }
-        }
-
-        function appendNum(n) {
-            if (currentInput.length < 2) {
-                currentInput += n;
-                document.getElementById('input-display').innerText = currentInput;
-            }
-        }
-
-        function clearNum() {
-            currentInput = "";
-            document.getElementById('input-display').innerText = "?";
-        }
-
-        function checkAnswer() {
-            const result = factorA * factorB;
-            if (parseInt(currentInput) === result) {
-                alert("🎉 答對了！精靈球投擲成功！");
-                location.reload(); // 測試完重置
-            } else {
-                alert("計算錯誤，寶可夢掙脫了！");
-                clearNum();
-            }
-        }
-
-        initMatrix();
+        createGrid();
     </script>
 </body>
 </html>
