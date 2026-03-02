@@ -3,131 +3,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>寶可夢對戰：視覺強化版 v7.8</title>
+    <title>寶可夢對戰：最終動畫版 v7.9</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 基礎震動 */
-        @keyframes strong-shake { 0%, 100% { transform: translate(0,0); } 25% { transform: translate(-10px, 0); } 75% { transform: translate(10px, 0); } }
-        /* 繞圈閃避 */
-        @keyframes dodge-circle { 0% { transform: rotate(0deg) translate(0); } 50% { transform: rotate(180deg) translate(20px); } 100% { transform: rotate(360deg) translate(0); } }
-        /* 背景閃光 */
-        @keyframes flash-red { 0%, 100% { background: transparent; } 50% { background: rgba(220, 38, 38, 0.4); } }
-        @keyframes flash-yellow { 0%, 100% { background: transparent; } 50% { background: rgba(234, 179, 8, 0.4); } }
-        /* 精靈球晃動 */
-        @keyframes ball-wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-15deg); } 75% { transform: rotate(15deg); } }
-        /* 逃跑動畫 */
-        @keyframes escape-slide { from { transform: translateX(0) rotate(0); } to { transform: translateX(120vw) rotate(15deg); } }
+        /* 基礎動畫 */
+        @keyframes strong-shake { 0%, 100% { transform: translate(0,0); } 25% { transform: translate(-15px, 5px); } 75% { transform: translate(15px, -5px); } }
+        @keyframes flash-red { 0%, 100% { background: transparent; } 50% { background: rgba(220, 38, 38, 0.6); } }
+        @keyframes flash-yellow { 0%, 100% { background: transparent; } 50% { background: rgba(234, 179, 8, 0.6); } }
+        @keyframes ball-wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-20deg); } 75% { transform: rotate(20deg); } }
+        @keyframes escape-slide { from { transform: translateX(0); } to { transform: translateX(120vw) rotate(20deg); } }
 
         .anim-shake { animation: strong-shake 0.1s infinite; }
-        .anim-dodge { animation: dodge-circle 0.6s ease-in-out; }
-        .anim-flash-red { animation: flash-red 0.3s 3; }
-        .anim-flash-yellow { animation: flash-yellow 0.3s 3; }
+        .anim-flash-red { animation: flash-red 0.2s 3; }
+        .anim-flash-yellow { animation: flash-yellow 0.2s 4; }
         .anim-ball { animation: ball-wiggle 0.5s infinite; }
-        .anim-escape { animation: escape-slide 3s linear forwards; }
+        .anim-escape { animation: escape-slide 2.5s linear forwards; }
 
-        /* 覆蓋層樣式 */
-        #overlay { position: fixed; inset: 0; z-index: 200; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.8); flex-direction: column; }
+        /* 全螢幕過場層 */
+        #overlay {
+            position: fixed; inset: 0; z-index: 500;
+            display: none; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.9); flex-direction: column;
+        }
+        .overlay-sprite { width: 300px; height: 300px; background-size: contain; background-repeat: no-repeat; background-position: center; }
     </style>
 </head>
 <body class="bg-slate-950 text-white min-h-screen flex flex-col items-center justify-center p-4">
 
-    <div id="battle-scene" class="w-full max-w-6xl grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+    <div id="battle-ui" class="w-full max-w-6xl grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
         <div class="flex flex-col items-center">
-            <div id="enemy-sprite" class="w-48 h-48 md:w-64 md:h-64 bg-contain bg-no-repeat bg-center transition-all" style="background-image: url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/150.png');"></div>
-            <div class="w-full bg-gray-800 h-4 rounded-full mt-4 border border-white relative overflow-hidden">
-                <div id="hp-inner" class="bg-green-500 h-full w-full transition-all duration-1000"></div>
+            <div id="enemy-main" class="w-64 h-64 bg-contain bg-no-repeat bg-center transition-all" style="background-image: url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/150.png');"></div>
+            <div class="w-full bg-slate-800 h-4 rounded-full mt-4 border border-white overflow-hidden">
+                <div id="enemy-hp" class="bg-green-500 h-full w-full transition-all duration-1000"></div>
             </div>
         </div>
-        <div class="flex flex-col items-center">
-             <div class="text-4xl font-black mb-4">3 × 2 = <span id="res-val">?</span></div>
-             <div id="game-panel" class="w-full h-80 flex items-center justify-center bg-slate-900 rounded-2xl">
-                 <button onclick="simulateStep1Win()" class="bg-red-600 px-6 py-3 rounded-lg">測試：第一關過關</button>
-             </div>
+
+        <div class="flex flex-col items-center bg-slate-900 p-8 rounded-3xl border border-slate-800">
+            <div class="text-3xl font-bold mb-6 text-yellow-400">測試控制台</div>
+            <div class="grid grid-cols-1 gap-4 w-full">
+                <button onclick="triggerHit()" class="bg-red-600 py-3 rounded-xl font-bold">1. 我方攻擊 (效果絕佳)</button>
+                <button onclick="triggerCapture()" class="bg-yellow-600 py-3 rounded-xl font-bold">2. 成功收服</button>
+                <button onclick="triggerEnemyAttack()" class="bg-blue-600 py-3 rounded-xl font-bold">3. 敵方攻擊 (算錯時)</button>
+                <button onclick="triggerEscape()" class="bg-slate-600 py-3 rounded-xl font-bold">4. 逃跑 (超時)</button>
+            </div>
         </div>
+
         <div class="flex flex-col items-center">
-            <div class="w-48 h-48 md:w-64 md:h-64 bg-contain bg-no-repeat bg-center" style="background-image: url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png'); transform: scaleX(-1);"></div>
+            <div id="player-main" class="w-64 h-64 bg-contain bg-no-repeat bg-center transition-all" style="background-image: url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png'); transform: scaleX(-1);"></div>
+            <div class="w-full bg-slate-800 h-4 rounded-full mt-4 border border-white overflow-hidden">
+                <div id="player-hp" class="bg-blue-500 h-full w-full transition-all duration-1000"></div>
+            </div>
         </div>
     </div>
 
     <div id="overlay">
-        <div id="overlay-bg" class="absolute inset-0 pointer-events-none"></div>
-        <div class="relative z-10 flex items-center justify-center gap-8">
-            <div id="overlay-sprite" class="w-64 h-64 bg-contain bg-no-repeat bg-center"></div>
+        <div id="overlay-flash" class="absolute inset-0 pointer-events-none"></div>
+        <div class="flex items-center justify-center gap-6">
+            <div id="overlay-img" class="overlay-sprite"></div>
             <div id="overlay-ball" class="hidden w-24 h-24 bg-contain bg-no-repeat bg-center anim-ball" style="background-image:url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png')"></div>
         </div>
-        <h2 id="overlay-text" class="mt-12 text-5xl font-black tracking-widest"></h2>
+        <h2 id="overlay-msg" class="mt-10 text-5xl font-black tracking-widest text-center"></h2>
     </div>
 
     <script>
-        const enemyName = "超夢";
-        
-        // 1. 第一關過關動畫
-        function simulateStep1Win() {
+        const enemyImg = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/150.png";
+        const playerImg = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png";
+        const overlay = document.getElementById('overlay');
+        const overlayImg = document.getElementById('overlay-img');
+        const overlayFlash = document.getElementById('overlay-flash');
+        const overlayMsg = document.getElementById('overlay-msg');
+
+        // --- 1. 我方攻擊成功 (效果絕佳) ---
+        function triggerHit() {
             showOverlay();
-            const sprite = document.getElementById('overlay-sprite');
-            const text = document.getElementById('overlay-text');
-            const bg = document.getElementById('overlay-bg');
+            overlayImg.style.backgroundImage = `url('${enemyImg}')`;
+            overlayImg.className = "overlay-sprite anim-shake";
+            overlayFlash.className = "absolute inset-0 anim-flash-red";
+            overlayMsg.innerText = "效果絕佳！";
+            overlayMsg.className = "mt-10 text-6xl font-black text-red-500 italic";
             
-            sprite.className = "w-64 h-64 bg-contain bg-no-repeat bg-center anim-shake";
-            bg.className = "absolute inset-0 anim-flash-red";
-            text.innerText = "效果絕佳！";
-            text.className = "mt-12 text-5xl font-black text-red-500 italic";
-            
-            // 扣血動畫
-            document.getElementById('hp-inner').style.width = "50%";
-            
-            setTimeout(() => { hideOverlay(); switchToStep2(); }, 2000);
+            document.getElementById('enemy-hp').style.width = "50%";
+            setTimeout(hideOverlay, 2000);
         }
 
-        // 2. 第二關成功收服
-        function onCaptureSuccess() {
+        // --- 2. 成功收服 ---
+        function triggerCapture() {
             showOverlay();
-            const sprite = document.getElementById('overlay-sprite');
-            const ball = document.getElementById('overlay-ball');
-            const text = document.getElementById('overlay-text');
-            const bg = document.getElementById('overlay-bg');
-
-            ball.classList.remove('hidden');
-            bg.className = "absolute inset-0 anim-flash-yellow";
-            text.innerText = `成功收服 "${enemyName}"`;
-            text.className = "mt-12 text-4xl font-bold text-yellow-400";
+            overlayImg.style.backgroundImage = `url('${enemyImg}')`;
+            overlayImg.className = "overlay-sprite";
+            document.getElementById('overlay-ball').classList.remove('hidden');
+            overlayFlash.className = "absolute inset-0 anim-flash-yellow";
+            overlayMsg.innerText = '成功收服 "超夢"';
+            overlayMsg.className = "mt-10 text-4xl font-bold text-yellow-400";
             
-            document.getElementById('hp-inner').style.width = "0%";
+            document.getElementById('enemy-hp').style.width = "0%";
         }
 
-        // 3. 失敗閃避動畫
-        function onCalculationError() {
+        // --- 3. 敵方攻擊 (算錯時) ---
+        function triggerEnemyAttack() {
             showOverlay();
-            const sprite = document.getElementById('overlay-sprite');
-            const text = document.getElementById('overlay-text');
+            // 切換為我方寶可夢居中受擊
+            overlayImg.style.backgroundImage = `url('${playerImg}')`;
+            overlayImg.style.transform = "scaleX(-1)"; // 保持皮卡丘面向
+            overlayImg.className = "overlay-sprite anim-shake"; 
+            overlayFlash.className = "absolute inset-0 anim-flash-red"; // 背後閃紅光
+            overlayMsg.innerText = "敵方攻擊！";
+            overlayMsg.className = "mt-10 text-5xl font-black text-white";
             
-            sprite.className = "w-64 h-64 bg-contain bg-no-repeat bg-center anim-dodge";
-            text.innerText = "敵方閃開攻擊了";
-            text.className = "mt-12 text-3xl font-bold text-slate-400";
-            
-            setTimeout(hideOverlay, 1500);
+            // 我方 HP 下降一半
+            document.getElementById('player-hp').style.width = "50%";
+            setTimeout(hideOverlay, 2000);
         }
 
-        // 4. 超時逃跑動畫
-        function onTimeout() {
+        // --- 4. 寶可夢逃跑 ---
+        function triggerEscape() {
             showOverlay();
-            const sprite = document.getElementById('overlay-sprite');
-            const text = document.getElementById('overlay-text');
-            
-            sprite.className = "w-64 h-64 bg-contain bg-no-repeat bg-center anim-escape";
-            text.innerText = "寶可夢逃跑了";
-            text.className = "mt-12 text-4xl font-black text-white";
+            overlayImg.style.backgroundImage = `url('${enemyImg}')`;
+            overlayImg.className = "overlay-sprite anim-escape";
+            overlayMsg.innerText = "寶可夢逃跑了";
+            overlayMsg.className = "mt-10 text-4xl font-black text-slate-400";
         }
 
-        function showOverlay() { document.getElementById('overlay').style.display = 'flex'; }
+        function showOverlay() { overlay.style.display = 'flex'; }
         function hideOverlay() { 
-            document.getElementById('overlay').style.display = 'none'; 
+            overlay.style.display = 'none'; 
             document.getElementById('overlay-ball').classList.add('hidden');
-        }
-        
-        function switchToStep2() {
-            document.getElementById('game-panel').innerHTML = `<button onclick="onCaptureSuccess()" class="bg-yellow-500 px-6 py-3 mr-2 rounded text-black">測試：收服成功</button>
-                                                               <button onclick="onCalculationError()" class="bg-slate-500 px-6 py-3 rounded">測試：計算錯誤</button>`;
+            overlayImg.style.transform = ""; 
         }
     </script>
 </body>
