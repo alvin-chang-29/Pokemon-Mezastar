@@ -1,87 +1,168 @@
-<style>
-    /* 修正後的容器佈局 */
-    .battle-center-container {
-        position: relative;
-        width: 100%;
-        max-width: 500px; /* 限制桌機最大寬度避免過大跑位 */
-        aspect-ratio: 1 / 1; /* 保持正方形比例 */
-    }
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>寶可夢對戰 PWA v7.6</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 基礎震動與光芒 */
+        @keyframes strong-shake { 0%, 100% { transform: translate(0,0); } 25% { transform: translate(-4px, 2px); } 75% { transform: translate(4px, -2px); } }
+        .battling-enemy { animation: strong-shake 0.1s infinite; filter: drop-shadow(0 0 15px red); }
+        .battling-player { animation: strong-shake 0.1s infinite; filter: drop-shadow(0 0 15px cyan); }
 
-    #grid {
-        display: grid;
-        grid-template-columns: repeat(10, 1fr);
-        grid-template-rows: repeat(10, 1fr);
-        gap: 4px;
-        width: 100%;
-        height: 100%;
-    }
-
-    /* 方塊容器：覆蓋在 Grid 正上方 */
-    #block-layer {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        display: grid;
-        grid-template-columns: repeat(10, 1fr);
-        grid-template-rows: repeat(10, 1fr);
-        gap: 4px;
-        pointer-events: none; /* 確保滑鼠可以點擊到底下的數字 */
-        z-index: 20;
-    }
-
-    /* 紅色答案目標格：確保在最上層 */
-    .flash-red-target {
-        z-index: 50 !important;
-        position: relative;
-        animation: pulse-red 0.5s infinite alternate !important;
-        background-color: #ef4444 !important;
-        color: white !important;
-        opacity: 1 !important;
-        border: 4px solid white !important;
-    }
-
-    .block-unit {
-        width: 80%;
-        height: 80%;
-        margin: auto;
-        border-radius: 4px;
-        transform: scale(0);
-        transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-    /* ... 保持原本的動畫設定 ... */
-</style>
-
-<div class="battle-center-container">
-    <div id="grid"></div>
-    <div id="block-layer"></div>
-</div>
-
-<script>
-    // 修正後的方塊生成邏輯：利用 CSS Grid 坐標
-    function createBlock(r, c, cls) {
-        const bContainer = document.createElement('div');
-        // 使用 CSS Grid 的 grid-area 直接定位，保證無論縮放都不會跑掉
-        bContainer.style.gridRow = r + 1; // +1 因為 Grid index 從 1 開始
-        bContainer.style.gridColumn = c + 1;
-        
-        const b = document.createElement('div');
-        b.className = `block-unit ${cls}`;
-        bContainer.appendChild(b);
-        
-        document.getElementById('block-layer').appendChild(bContainer);
-        setTimeout(() => b.classList.add('block-show'), 50);
-    }
-
-    function clickB(c) {
-        if (step === 1 && c === b) {
-            step = 2;
-            showBlocks('g');
-            // 修正：找到目標格並強制提升層級
-            const target = document.getElementById(`c-${a}-${b}`);
-            target.classList.add('flash-red-target');
-            target.style.textShadow = "0 0 5px black";
+        /* 核心表格對位修正：iPad/桌機 通用 */
+        .battle-center-container {
+            position: relative;
+            width: 100%;
+            max-width: 450px; /* 限制寬度防止桌機過大 */
+            aspect-ratio: 1 / 1;
+            background: rgba(0,0,0,0.3);
+            border-radius: 1rem;
+            padding: 10px;
         }
-    }
-</script>
+
+        /* 背景數字層 */
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            grid-template-rows: repeat(10, 1fr);
+            gap: 4px;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+        }
+
+        /* 方塊堆疊層：pointer-events 設為 none 確保能點擊到底下數字 */
+        #block-layer {
+            position: absolute;
+            top: 10px; left: 10px; bottom: 10px; right: 10px;
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            grid-template-rows: repeat(10, 1fr);
+            gap: 4px;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        /* 方塊樣式 */
+        .block-unit {
+            width: 85%; height: 85%; margin: auto; border-radius: 4px;
+            transform: scale(0); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.27);
+        }
+        .block-show { transform: scale(1); }
+
+        /* 紅色答案格：強制最高層級穿透方塊 */
+        .flash-red-target {
+            z-index: 100 !important;
+            background-color: #ef4444 !important;
+            color: white !important;
+            animation: pulse-red 0.5s infinite alternate;
+            box-shadow: 0 0 20px #ef4444;
+            opacity: 1 !important;
+        }
+        @keyframes pulse-red { from { transform: scale(1); } to { transform: scale(1.1); } }
+    </style>
+</head>
+<body class="bg-slate-950 text-white min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="w-full max-w-4xl flex justify-between p-4 mb-4 bg-black/40 rounded-xl border border-slate-700">
+        <div class="text-yellow-400 font-bold">第一關：方塊陣型</div>
+        <div class="text-red-500 font-mono text-2xl">TIME: <span id="timer">0</span>s</div>
+    </div>
+
+    <div class="w-full max-w-6xl grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+        <div class="flex flex-col items-center">
+            <div id="enemy" class="w-48 h-48 md:w-64 md:h-64 bg-contain bg-no-repeat bg-center battling-enemy" style="background-image: url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/150.png');"></div>
+        </div>
+
+        <div class="flex flex-col items-center">
+            <div class="text-4xl font-black mb-6 text-white">
+                <span class="text-yellow-400">3</span> × <span class="text-green-400">2</span> = ?
+            </div>
+            
+            <div class="battle-center-container">
+                <div id="grid"></div>
+                <div id="block-layer"></div>
+            </div>
+        </div>
+
+        <div class="flex flex-col items-center">
+            <div id="player" class="w-48 h-48 md:w-64 md:h-64 bg-contain bg-no-repeat bg-center battling-player" style="background-image: url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png'); transform: scaleX(-1);"></div>
+        </div>
+    </div>
+
+    <script>
+        const valA = 3, valB = 2;
+        let step = 0, time = 0;
+
+        function init() {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = "";
+            for (let r = 0; r <= 9; r++) {
+                for (let c = 0; c <= 9; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = "flex items-center justify-center font-bold text-sm md:text-lg border border-slate-800 rounded cursor-pointer transition-all";
+                    
+                    if (r === 0 && c === 0) { cell.innerText = "×"; }
+                    else if (c === 0 && r > 0) {
+                        cell.innerText = r; cell.className += " text-yellow-400";
+                        if(r === valA) cell.classList.add('bg-yellow-600/40', 'border-yellow-400');
+                        cell.onclick = () => { if(step===0 && r===valA) handleStep1(); };
+                    } else if (r === 0 && c > 0) {
+                        cell.innerText = c; cell.className += " text-green-400 opacity-30";
+                        cell.id = `col-${c}`;
+                        cell.onclick = () => { if(step===1 && c===valB) handleStep2(); };
+                    } else {
+                        cell.innerText = r * c; cell.className += " text-transparent";
+                        cell.id = `ans-${r}-${c}`;
+                        cell.onclick = () => { if(step===2 && r===valA && c===valB) handleStep3(); };
+                    }
+                    grid.appendChild(cell);
+                }
+            }
+            startTimer();
+        }
+
+        function startTimer() {
+            setInterval(() => { time++; document.getElementById('timer').innerText = time; }, 1000);
+        }
+
+        function handleStep1() {
+            step = 1;
+            document.getElementById(`col-${valB}`).classList.replace('opacity-30', 'bg-green-600/40');
+            document.getElementById(`col-${valB}`).classList.add('border-green-400');
+            for(let i=0; i<valA; i++) createBlock(i+1, 1, 'bg-yellow-400');
+        }
+
+        function handleStep2() {
+            step = 2;
+            for(let j=2; j<=valB; j++) for(let i=1; i<=valA; i++) createBlock(i, j, 'bg-green-500');
+            // 修正：紅色目標格穿透顯示
+            const target = document.getElementById(`ans-${valA}-${valB}`);
+            target.classList.add('flash-red-target', '!text-white');
+        }
+
+        function handleStep3() {
+            alert("成功定位！進入第二關計算。");
+            location.reload();
+        }
+
+        function createBlock(r, c, cls) {
+            const container = document.getElementById('block-layer');
+            const bWrapper = document.createElement('div');
+            bWrapper.style.gridRow = r + 1;
+            bWrapper.style.gridColumn = c + 1;
+            
+            const b = document.createElement('div');
+            b.className = `block-unit ${cls}`;
+            bWrapper.appendChild(b);
+            container.appendChild(bWrapper);
+            
+            setTimeout(() => b.classList.add('block-show'), 50);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
