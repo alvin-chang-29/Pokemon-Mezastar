@@ -1,49 +1,67 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
+    <title>隊伍挑選與背包系統 v8.4</title>
     <title>寶可夢進化背包系統 - 模組測試 v8.5</title>
-    <title>戰鬥紀錄與分析 - 模組 v8.6</title>
 <script src="https://cdn.tailwindcss.com"></script>
-    <style>
+<style>
+        .slot { border: 4px dashed #475569; transition: all 0.3s; }
+        .slot-filled { border: 4px solid #eab308; background: rgba(234, 179, 8, 0.1); }
+        .poke-card { cursor: pointer; transition: transform 0.2s; }
+        .poke-card:active { scale: 0.95; }
+        .is-recommended { ring: 4px; ring-color: #ef4444; position: relative; }
+        .is-recommended::after { content: "推薦"; position: absolute; top: -10px; right: -10px; background: #ef4444; color: white; padding: 2px 8px; border-radius: 999px; font-size: 10px; }
         .evo-path-line { height: 2px; flex-grow: 1; background: #475569; margin: 0 10px; position: relative; top: 20px; }
         .locked { filter: brightness(0) invert(0.3); } /* 剪影效果 */
         .exp-bar { height: 8px; background: #1e293b; border-radius: 999px; overflow: hidden; border: 1px solid #334155; }
         .exp-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); transition: width 0.5s ease-out; }
-    </style>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</style>
 </head>
-<body class="bg-slate-950 text-white p-4 md:p-8">
 <body class="bg-slate-950 text-white p-6">
+<body class="bg-slate-950 text-white p-4 md:p-8">
 
+    <div class="max-w-4xl mx-auto">
+        <div class="bg-slate-900 p-6 rounded-3xl border border-slate-700 mb-8 flex items-center justify-between">
+            <div>
+                <h3 class="text-slate-400 text-sm">目前的強敵</h3>
+                <div class="flex items-center gap-4">
+                    <div class="w-16 h-16 bg-contain bg-center bg-no-repeat" style="background-image:url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/150.png')"></div>
+                    <span class="text-3xl font-black">超夢 <span class="text-sm text-purple-400 font-normal">(超能力)</span></span>
+                </div>
+                <p class="text-xs text-red-400 mt-2">💡 建議使用：蟲、幽靈、惡 屬性</p>
+            </div>
     <div class="max-w-6xl mx-auto">
         <header class="flex justify-between items-center mb-8 border-b border-slate-800 pb-4">
             <h1 class="text-3xl font-black text-yellow-500 tracking-widest">我的寶可夢背包</h1>
-            <div class="text-right">
+<div class="text-right">
+                <button class="bg-slate-800 px-4 py-2 rounded-lg text-xs border border-slate-600">查看屬性表</button>
                 <p class="text-xs text-slate-400">進化難易度設定：<span class="text-green-400">普通 (1.0x)</span></p>
                 <p class="text-xs text-slate-400">總答對題數：<span id="total-correct">0</span></p>
-            </div>
-    <div class="max-w-4xl mx-auto">
-        <header class="mb-10">
-            <h1 class="text-3xl font-black text-blue-400">戰鬥紀錄與分析</h1>
-            <p class="text-slate-500">檢視你的冒險歷程與數學戰力</p>
-</header>
+</div>
+        </div>
+        </header>
 
+        <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+            <span class="bg-yellow-500 w-2 h-6 block"></span> 選擇出戰隊伍 (3隻)
+        </h2>
+        <div class="grid grid-cols-3 gap-4 mb-10">
+            <div id="slot-0" class="slot h-40 rounded-2xl flex items-center justify-center flex-col text-slate-500">
+                <span class="text-4xl">+</span>
+            </div>
+            <div id="slot-1" class="slot h-40 rounded-2xl flex items-center justify-center flex-col text-slate-500">
+                <span class="text-4xl">+</span>
+            </div>
+            <div id="slot-2" class="slot h-40 rounded-2xl flex items-center justify-center flex-col text-slate-500">
+                <span class="text-4xl">+</span>
         <div id="backpack-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-12">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-            <div class="bg-slate-900 p-6 rounded-3xl border border-slate-800 text-center">
-                <p class="text-slate-500 text-sm">總對戰次數</p>
-                <p class="text-4xl font-black mt-2">42</p>
-            </div>
-            <div class="bg-slate-900 p-6 rounded-3xl border border-slate-800 text-center">
-                <p class="text-slate-500 text-sm">成功收服率</p>
-                <p class="text-4xl font-black mt-2 text-green-400">85%</p>
-            </div>
-            <div class="bg-slate-900 p-6 rounded-3xl border border-slate-800 text-center">
-                <p class="text-slate-500 text-sm">平均 KO 時間</p>
-                <p class="text-4xl font-black mt-2 text-yellow-500">18s</p>
 </div>
         </div>
 
+        <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+            <span class="bg-blue-500 w-2 h-6 block"></span> 我的背包 (點擊加入)
+        </h2>
+        <div id="backpack" class="grid grid-cols-4 md:grid-cols-6 gap-3">
+            </div>
         <div id="evo-panel" class="hidden bg-slate-900 rounded-[2rem] p-8 border-2 border-slate-800 shadow-2xl">
             <div class="flex flex-col md:flex-row items-center gap-12">
                 <div class="text-center">
@@ -52,26 +70,27 @@
                     <p class="text-blue-400 mt-2">已答對：<span id="detail-count">0</span> 題</p>
                     <button onclick="simulateCorrect()" class="mt-6 bg-blue-600 hover:bg-blue-500 px-6 py-2 rounded-full font-bold transition-all active:scale-95">模擬答對 +10 題</button>
                 </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div class="bg-slate-900 p-6 rounded-3xl border border-slate-800">
-                <h3 class="text-xl font-bold mb-6 italic">數學弱點偵測 (錯誤次數)</h3>
-                <canvas id="errorChart"></canvas>
-            </div>
 
+        <button id="start-battle" class="w-full mt-10 bg-red-600 py-4 rounded-full font-black text-2xl opacity-50 cursor-not-allowed">
+            進入戰鬥！
+        </button>
                 <div class="flex-grow">
                     <h3 class="text-slate-500 font-bold mb-8 tracking-widest uppercase">進化型態與需求</h3>
                     <div id="evo-chain" class="flex items-start justify-between">
                         </div>
                 </div>
-            <div class="bg-slate-900 p-6 rounded-3xl border border-slate-800 h-[400px] overflow-y-auto">
-                <h3 class="text-xl font-bold mb-6 italic">最近 5 場對戰詳情</h3>
-                <div id="history-list" class="space-y-4">
-                    </div>
-</div>
-</div>
+            </div>
+        </div>
 </div>
 
 <script>
+        // 模擬從 Dexie.js 讀取的背包資料
+        const myPokemon = [
+            { id: 25, name: "皮卡丘", type: "電" },
+            { id: 1, name: "妙蛙種子", type: "草" },
+            { id: 4, name: "小火龍", type: "炎" },
+            { id: 94, name: "耿鬼", type: "幽靈", recommended: true },
+            { id: 133, name: "伊布", type: "一般" }
         // 進化設定：未來可從遊戲設定調整
         const EVO_CONFIG = { stage1: 50, stage2: 150 };
 
@@ -85,22 +104,19 @@
             { id: 83, name: "大蔥鴨", correctCount: 0, chain: [83] }, // 無進化
             { id: 390, name: "小火焰猴", correctCount: 0, chain: [390, 391, 392] },
             { id: 447, name: "利歐路", correctCount: 0, chain: [447, 448] }
-        // 模擬戰鬥紀錄數據
-        const battleHistory = [
-            { enemy: "超夢", result: "Success", time: "15s", errors: ["7x8"], date: "2024/05/20" },
-            { enemy: "噴火龍", result: "Escape", time: "60s", errors: ["8x9", "8x7"], date: "2024/05/19" },
-            { enemy: "皮卡丘", result: "Success", time: "10s", errors: [], date: "2024/05/19" },
-            { enemy: "烈空坐", result: "Failed", time: "45s", errors: ["9x9"], date: "2024/05/18" },
-            { enemy: "水箭龜", result: "Success", time: "22s", errors: ["6x7"], date: "2024/05/17" }
 ];
 
+        let selectedTeam = [null, null, null];
         let currentSelectedIdx = null;
 
-        function initBackpack() {
+function initBackpack() {
+            const container = document.getElementById('backpack');
+            myPokemon.forEach(p => {
             const grid = document.getElementById('backpack-grid');
             grid.innerHTML = "";
             backpackData.forEach((p, idx) => {
-                const card = document.createElement('div');
+const card = document.createElement('div');
+                card.className = `poke-card bg-slate-800 p-2 rounded-xl border border-slate-700 flex flex-col items-center ${p.recommended ? 'is-recommended' : ''}`;
                 card.className = "bg-slate-900 p-4 rounded-2xl border border-slate-800 flex flex-col items-center cursor-pointer hover:border-blue-500 transition-all";
                 card.onclick = () => showDetail(idx);
                 
@@ -109,30 +125,26 @@
                 if(p.correctCount >= EVO_CONFIG.stage2 && p.chain[2]) currentEvoId = p.chain[2];
                 else if(p.correctCount >= EVO_CONFIG.stage1 && p.chain[1]) currentEvoId = p.chain[1];
 
-                card.innerHTML = `
+card.innerHTML = `
+                    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${p.id}.png" class="w-16 h-16">
+                    <span class="text-xs mt-1">${p.name}</span>
                     <div class="w-16 h-16 bg-contain bg-no-repeat bg-center mb-2" style="background-image:url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${currentEvoId}.png')"></div>
                     <span class="text-xs font-bold">${p.name}</span>
-        function initHistory() {
-            const list = document.getElementById('history-list');
-            battleHistory.forEach(b => {
-                const item = document.createElement('div');
-                item.className = "bg-black/40 p-4 rounded-xl border-l-4 " + 
-                                (b.result === 'Success' ? 'border-green-500' : 'border-red-500');
-                item.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <span class="font-bold text-lg">${b.enemy}</span>
-                        <span class="text-xs text-slate-500">${b.date}</span>
-                    </div>
-                    <p class="text-xs mt-1 ${b.result === 'Success' ? 'text-green-400' : 'text-red-400'}">${b.result} - 耗時 ${b.time}</p>
-                    <div class="mt-2 flex flex-wrap gap-1">
-                        ${b.errors.map(e => `<span class="bg-red-900/30 text-red-400 text-[10px] px-2 py-0.5 rounded">錯題: ${e}</span>`).join('')}
-                    </div>
                `;
+                card.onclick = () => addToTeam(p);
+                container.appendChild(card);
                 grid.appendChild(card);
-                list.appendChild(item);
 });
 }
 
+        function addToTeam(p) {
+            const emptySlotIndex = selectedTeam.indexOf(null);
+            if (emptySlotIndex !== -1) {
+                selectedTeam[emptySlotIndex] = p;
+                updateSlots();
+            } else {
+                alert("隊伍已滿！點擊插槽可以更換。");
+            }
         function showDetail(idx) {
             currentSelectedIdx = idx;
             const p = backpackData[idx];
@@ -141,8 +153,22 @@
             document.getElementById('detail-count').innerText = p.correctCount;
             
             updateEvoDisplay(p);
-        }
+}
 
+        function updateSlots() {
+            selectedTeam.forEach((p, i) => {
+                const slot = document.getElementById(`slot-${i}`);
+                if (p) {
+                    slot.className = "slot slot-filled h-40 rounded-2xl flex items-center justify-center flex-col cursor-pointer";
+                    slot.innerHTML = `
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${p.id}.png" class="w-24 h-24">
+                        <span class="text-xs font-bold text-yellow-400">${p.name}</span>
+                    `;
+                    slot.onclick = () => { selectedTeam[i] = null; updateSlots(); };
+                } else {
+                    slot.className = "slot h-40 rounded-2xl flex items-center justify-center flex-col text-slate-500";
+                    slot.innerHTML = `<span class="text-4xl">+</span>`;
+                    slot.onclick = null;
         function updateEvoDisplay(p) {
             const chainContainer = document.getElementById('evo-chain');
             chainContainer.innerHTML = "";
@@ -167,29 +193,17 @@
                     const line = document.createElement('div');
                     line.className = "evo-path-line";
                     chainContainer.appendChild(line);
-        function initChart() {
-            const ctx = document.getElementById('errorChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['2x', '3x', '4x', '5x', '6x', '7x', '8x', '9x'],
-                    datasets: [{
-                        label: '錯誤題數統計',
-                        data: [2, 1, 4, 0, 8, 12, 15, 9], // 模擬數據
-                        backgroundColor: 'rgba(239, 68, 68, 0.6)',
-                        borderColor: '#ef4444',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    scales: {
-                        y: { beginAtZero: true, grid: { color: '#334155' } },
-                        x: { grid: { display: false } }
-                    },
-                    plugins: { legend: { display: false } }
 }
 });
 
+            // 檢查是否可以開始戰鬥
+            const btn = document.getElementById('start-battle');
+            if (selectedTeam.every(p => p !== null)) {
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                btn.onclick = () => alert("即將帶著隊伍進入對戰舞台！");
+            } else {
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+                btn.onclick = null;
             // 更新大圖
             let currentEvoId = p.chain[0];
             if(p.correctCount >= EVO_CONFIG.stage2 && p.chain[2]) currentEvoId = p.chain[2];
@@ -203,12 +217,5 @@
                 document.getElementById('detail-count').innerText = backpackData[currentSelectedIdx].correctCount;
                 updateEvoDisplay(backpackData[currentSelectedIdx]);
                 initBackpack(); // 同步更新列表
-            }
 }
-
-        initBackpack();
-        initHistory();
-        initChart();
-</script>
-</body>
-</html>
+}
